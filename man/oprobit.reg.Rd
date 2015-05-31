@@ -1,0 +1,93 @@
+\name{oprobit.reg}
+\alias{oprobit.reg}
+%- Also NEED an '\alias' for EACH other topic documented here.
+\title{
+  Fit Ordered Probit Model.
+%%  ~~function to do ... ~~
+}
+\description{
+  Wrapper function for \code{\link[oglmx]{oglmx}} to estimate an ordered Probit model. 
+%%  ~~ A concise (1-5 lines) description of what the function does. ~~
+}
+\usage{
+oprobit.reg(formula, data, start = NULL, beta = NULL, analhessian = TRUE,
+            na.action = TRUE, savemodelframe = FALSE)
+}
+%- maybe also 'usage' for other objects documented here.
+\arguments{
+  \item{formula}{
+  an object of class \code{\link{formula}}: a symbolic description of the model used to explain the mean of the latent variable. The response variable should be a numeric vector or factor variable such that the numerical assignments for the levels of the factor have ordinal meaning.
+%%     ~~Describe \code{formula} here~~
+}
+  \item{data}{
+  a data frame containing the variables in the model.
+%%     ~~Describe \code{data} here~~
+}
+  \item{start}{
+  either \code{NULL} or a numeric vector specifying start values for each of the estimated parameters, passed to the maximisation routine.
+%%     ~~Describe \code{start} here~~
+}
+  \item{beta}{
+%%     ~~Describe \code{beta} here~~
+}
+  \item{analhessian}{
+  logical. Indicates whether the analytic Hessian should be calculated and used, default is TRUE, if set to FALSE a finite-difference approximation of the Hessian is used.
+%%     ~~Describe \code{analhessian} here~~
+}
+ \item{na.action}{
+  Currently not a functioning argument.
+%%     ~~Describe \code{na.action} here~~
+}
+  \item{savemodelframe}{
+  logical. Indicates whether the model frame(s) should be saved for future use. Default is \code{FALSE}. Should be switched to \code{TRUE} if intending to estimate Average Marginal Effects.
+%%     ~~Describe \code{savemodelframe} here~~
+}
+}
+%\details{
+%%  ~~ If necessary, more details than the description above ~~
+%}
+\value{
+  object of class "\code{oglmx}", see \code{\link[oglmx]{oglmx}}.
+%%  ~Describe the value returned
+%%  If it is a LIST, use
+%%  \item{comp1 }{Description of 'comp1'}
+%%  \item{comp2 }{Description of 'comp2'}
+%% ...
+}
+%\references{
+%% ~put references to the literature/web site here ~
+%}
+\author{
+  Nathan Carroll, \email{nathan.carroll@ur.de}
+%%  ~~who you are~~
+}
+%\note{
+%%  ~~further notes~~
+%}
+
+%% ~Make other sections like Warning with \section{Warning }{....} ~
+
+\seealso{
+  \code{\link[MASS]{polr}} for alternative method to estimate an ordered probit model. \code{\link{oglmx}}. To obtain marginal effects see \code{\link{margins.oglmx}}.
+%% ~~objects to See Also as \code{\link{help}}, ~~~
+}
+%\examples{
+%##---- Should be DIRECTLY executable !! ----
+%##-- ==>  Define data, use random,
+%##--	or do  help(data=index)  for the standard data sets.
+
+%## The function is currently defined as
+%function (formula, data, start = NULL, beta = NULL, analhessian = TRUE, 
+%    na.action = TRUE, savemodelframe = FALSE) 
+%{
+%    value <- oglmx(formulaMEAN = formula, data = data, start = start, 
+%        beta = beta, analhessian = analhessian, na.action = na.action, 
+%        savemodelframe = savemodelframe, link = "probit", constantMEAN = FALSE, 
+%        constantSD = FALSE, delta = 0, threshparam = NULL)
+%    return(value)
+%  }
+%}
+% Add one or more standard keywords, see file 'KEYWORDS' in the
+% R documentation directory.
+%\keyword{ ~kwd1 }
+%\keyword{ ~kwd2 }% __ONLY ONE__ keyword per line
