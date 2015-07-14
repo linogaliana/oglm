@@ -360,7 +360,7 @@ if (AME & is.null(object$modelframes)){
     return(value)
   }
   
-  VCOV<-vcov.oglmx(object)
+  VCOV<-vcov.oglmx(object,tol=1e-40)
   calcSE<-function(x){
     gprime<-attr(x,"GDerivatives")
     outputSE<-(gprime%*%VCOV%*%gprime)^0.5

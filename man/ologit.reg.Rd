@@ -10,8 +10,8 @@
 %%  ~~ A concise (1-5 lines) description of what the function does. ~~
 }
 \usage{
-ologit.reg(formula, data, start = NULL, beta = NULL, analhessian = TRUE, 
-        na.action = TRUE, savemodelframe = FALSE)
+ologit.reg(formula, data, start = NULL, weights=NULL, beta = NULL, 
+           analhessian = TRUE, na.action = TRUE, savemodelframe = FALSE, robust = FALSE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -26,6 +26,9 @@ ologit.reg(formula, data, start = NULL, beta = NULL, analhessian = TRUE,
   \item{start}{
   either \code{NULL} or a numeric vector specifying start values for each of the estimated parameters, passed to the maximisation routine.
 %%     ~~Describe \code{start} here~~
+}
+  \item{weights}{
+  either \code{NULL} or a numeric vector of length equal to the number of rows in the data frame. Used to apply weighted maximum likelihood estimation.
 }
   \item{beta}{
 %%     ~~Describe \code{beta} here~~
@@ -42,6 +45,9 @@ ologit.reg(formula, data, start = NULL, beta = NULL, analhessian = TRUE,
   logical. Indicates whether the model frame(s) should be saved for future use. Default is \code{FALSE}. Should be switched to \code{TRUE} if intending to estimate Average Marginal Effects.
 %%     ~~Describe \code{savemodelframe} here~~
 }
+  \item{robust}{
+  logical. If set to \code{TRUE} the outer product or BHHH estimate of the meat in the sandwich of the variance-covariance matrix is calculated. If calculated standard errors will be calculated using the sandwich estimator by default when calling \code{summary}.
+  }
 }
 \details{
   object of class "\code{oglmx}", see \code{\link{oglmx}}.

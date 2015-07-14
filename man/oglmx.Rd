@@ -12,11 +12,11 @@ Fit Ordered Generalized Linear Model.
 %%  ~~ A concise (1-5 lines) description of what the function does. ~~
 }
 \usage{
-oglmx(formulaMEAN, formulaSD = NULL, data, start = NULL, link = "probit",
-      constantMEAN = TRUE, constantSD = TRUE, beta = NULL, delta = NULL,
-      threshparam = NULL, analhessian = TRUE, sdmodel = expression(exp(z)),
-      SameModelMEANSD = FALSE, na.action = TRUE, savemodelframe = FALSE, 
-      Force = FALSE)
+oglmx(formulaMEAN, formulaSD = NULL, data, start = NULL, weights = NULL, 
+      link = "probit", constantMEAN = TRUE, constantSD = TRUE, beta = NULL,
+      delta = NULL, threshparam = NULL, analhessian = TRUE, 
+      sdmodel = expression(exp(z)), SameModelMEANSD = FALSE, na.action = TRUE,
+      savemodelframe = FALSE, Force = FALSE, robust = FALSE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -35,6 +35,9 @@ oglmx(formulaMEAN, formulaSD = NULL, data, start = NULL, link = "probit",
   \item{start}{
   either \code{NULL} or a numeric vector specifying start values for each of the estimated parameters, passed to the maximisation routine.
 %%     ~~Describe \code{start} here~~
+}
+  \item{weights}{
+  either \code{NULL} or a numeric vector of length equal to the number of rows in the data frame. Used to apply weighted maximum likelihood estimation.
 }
   \item{link}{
     specifies a link function for the model to be estimated, accepted values are "\code{probit}", "\code{logit}", "\code{cauchit}", "\code{loglog}" and "\code{cloglog}"
@@ -84,6 +87,9 @@ oglmx(formulaMEAN, formulaSD = NULL, data, start = NULL, link = "probit",
   logical. If set to \code{FALSE} (the default) the function stops if the response variable has more than twenty categories. Should be changed to \code{TRUE} if a model with more than twenty categories is desired.
 %%     ~~Describe \code{Force} here~~
 }
+  \item{robust}{
+  logical. If set to \code{TRUE} the outer product or BHHH estimate of the meat in the sandwich of the variance-covariance matrix is calculated. If calculated standard errors will be calculated using the sandwich estimator by default when calling \code{summary}.
+  }
 }
 %\details{
 %%  ~~ If necessary, more details than the description above ~~
@@ -100,7 +106,9 @@ An object of class "\code{oglmx}" with the following components:
 \item{terms}{two element list. Each element is an object of type \code{terms} related to the mean and standard deviation equation respectively.
 }
 \item{formula}{two element list. Each element is an object of type \code{formula} related to the mean and standard deviation equation respectively.}
+\item{NoVarModData}{dataframe. Contains data required to estimate the no information model used in calculation of McFadden's R-squared measure.}
 \item{hessian}{hessian matrix of the log-likelihood function evaluated at the obtained parameter vector.}
+\item{BHHHhessian}{Either \code{NULL} if no weights were included and \code{robust = FALSE}, or the BHHH estimate.}
 \item{Hetero}{logical. If \code{TRUE} indicates that the estimated model includes a model for the variance of the error term, i.e. heteroskedasticity.}
 \item{NOutcomes}{the number of distinct outcomes in the response variable.}
 \item{Outcomes}{numeric vector of length equal to \code{NOutcomes}. Lists the values of the different outcomes.}
@@ -124,6 +132,7 @@ An object of class "\code{oglmx}" with the following components:
   
   Wooldridge, J. M. (2002) \emph{Econometric analysis of cross section and panel data } The MIT Press
 }
+  
 \author{
 Nathan Carroll, \email{nathan.carroll@ur.de}
 }

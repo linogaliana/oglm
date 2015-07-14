@@ -6,7 +6,7 @@
 Summarizing Ordered Discrete Outcome Model Fits
 }
 \description{
-code{summary} method for class "\code{oglmx}"
+\code{summary} method for class "\code{oglmx}"
 }
 \usage{
 \method{summary}{oglmx}(object, tol = 1e-20, ... )

@@ -9,8 +9,8 @@ Fit Probit Model.
 %%  ~~ A concise (1-5 lines) description of what the function does. ~~
 }
 \usage{
-probit.reg(formula, data, start = NULL, beta = NULL, analhessian = TRUE,
-        na.action = TRUE, savemodelframe = FALSE)
+probit.reg(formula, data, start = NULL, weights=NULL, beta = NULL,
+           analhessian = TRUE, na.action = TRUE, savemodelframe = FALSE, robust = FALSE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -24,6 +24,9 @@ probit.reg(formula, data, start = NULL, beta = NULL, analhessian = TRUE,
   \item{start}{
   either \code{NULL} or a numeric vector specifying start values for each of the estimated parameters, passed to the maximisation routine.
 %%     ~~Describe \code{start} here~~
+}
+  \item{weights}{
+  either \code{NULL} or a numeric vector of length equal to the number of rows in the data frame. Used to apply weighted maximum likelihood estimation.
 }
   \item{beta}{\code{NULL} or numeric vector. Used to prespecify elements of the parameter vector for the equation of the mean of the latent variable. Vector should be of length one or of length equal to the number of explanatory variables in the mean equation. If of length one the value is presumed to correspond to the constant. If of length greater than one then \code{NA} should be entered for elements of the vector to be estimated.
 %%     ~~Describe \code{beta} here~~
@@ -40,6 +43,9 @@ probit.reg(formula, data, start = NULL, beta = NULL, analhessian = TRUE,
   logical. Indicates whether the model frame(s) should be saved for future use. Default is \code{FALSE}. Should be switched to \code{TRUE} if intending to estimate Average Marginal Effects.
 %%     ~~Describe \code{savemodelframe} here~~
 }
+\item{robust}{
+  logical. If set to \code{TRUE} the outer product or BHHH estimate of the meat in the sandwich of the variance-covariance matrix is calculated. If calculated standard errors will be calculated using the sandwich estimator by default when calling \code{summary}.
+  }
 }
 %\details{
 %%  ~~ If necessary, more details than the description above ~~
