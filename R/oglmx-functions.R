@@ -1,125 +1,25 @@
-oglmx<-function(formulaMEAN,formulaSD=NULL,data,start=NULL,weights=NULL,link="probit",constantMEAN=TRUE,constantSD=TRUE,beta=NULL,delta=NULL,threshparam=NULL,analhessian=TRUE,sdmodel=expression(exp(z)),SameModelMEANSD=FALSE,na.action=TRUE,savemodelframe=FALSE,Force=FALSE,robust=FALSE){  
-  call<-match.call()
-  # formulaMEAN specifies a formula for the conditional mean of the latent variable
-  # formulaSD specifies a formula for the standard deviation of the error term of the latent variable. If NULL a homoskedastic
-  # model is estimated. This may be a standard ordered probit or interval regression  since cutoffs can be specified and the constant in the equation for the mean included.
-  # inputs of beta, delta and threshparam allow the user to prespecify the values of particular elements of the parameter. I.e. the standard ordered probit sets beta[1]==0 and delta[1]==0 if sdmodel=expression(exp(z))  
-  # if specified beta should be of length equal to the number of parameters in beta, delta the number of parameters in delta, threshparam the number of outcomes - 1. Write NA for a parameter to be estimated.
-  # constantMEAN and constantSD indicate that the equations for the mean of the latent variable and the standard deviation of the error include a constant.
-
+oglmx.fit<-function(Y,X,Z=NULL,w,link="probit",sdmodel=expression(exp(z)),SameModelMEANSD=FALSE,beta=NULL,delta=NULL,threshparam=NULL,analhessian=TRUE,robustmatrix=FALSE,start=NULL,savemodelframe=FALSE){
+  Xr<-split.data.frame(X,Y,drop=FALSE)
+  no.outcomes<-length(Xr)
+  No.Obs<-length(Y)
+  listoutcomes<- as.numeric(levels(as.factor(Y)))[order(as.numeric(levels(as.factor(Y))))]
+  weightsr<-split(w,Y,drop=FALSE)
+  if (is.null(Z) & SameModelMEANSD){
+    Zr<-Xr
+  } else if (is.null(Z) & !SameModelMEANSD){
+    Z<-matrix(rep(1,No.Obs),ncol=1)
+    Zr<-split.data.frame(Z,Y,drop = FALSE)
+  } else {
+    Zr<-split.data.frame(Z,Y,drop=FALSE)
+  }
   
-# Extract necessary data
-dataframeMEAN<-model.frame(formulaMEAN,data=data,na.action=na.pass)
-termsMEAN<-terms(dataframeMEAN)
-X<-model.matrix(formulaMEAN,dataframeMEAN)
-Y<-model.response(dataframeMEAN)
-KeepY<-!is.na(Y)
-KeepX<-!apply(X,1,.IsNARow)
-if (!is.null(formulaSD) & !SameModelMEANSD){
-  dataframeSD<-model.frame(formulaSD,data=data,na.action=na.pass)
-  Z<-model.matrix(formulaSD,dataframeSD)
-  KeepZ<-!apply(Z,1,.IsNARow)
-  X<-X[KeepX & KeepZ & KeepY, ,drop=FALSE]
-  Z<-Z[KeepX & KeepZ & KeepY, ,drop=FALSE]
-  Y<-Y[KeepX & KeepZ & KeepY]
-  termsSD<-terms(dataframeSD)
-} else {
-  KeepZ<-!vector("logical",length(X))
-  X<-X[KeepX & KeepY, ,drop=FALSE]
-  Y<-Y[KeepX & KeepY]
-  termsSD<-NULL
-}
-if (!is.null(weights)){
-  weights<-weights[KeepX & KeepY & KeepZ]
-  robust<-TRUE
-  X<-X[!is.na(weights), ,drop=FALSE]
-  Y<-Y[!is.na(weights)]
-  if (!is.null(formulaSD) & !SameModelMEANSD){
-    Z<-Z[!is.na(weights)]
-  }
-  weights<-weights[!is.na(weights)]
-  weighted<-TRUE
-  weights<-weights*length(weights)/sum(weights)
-} else {
-  weights<-rep_len(1,length(Y))
-  weighted<-FALSE
-}
-
-NoVarModData<-data.frame(Y,weights)
-  
-No.Obs<-length(Y)
-# calculate log-likelihood if probabilities are derived from proportions in sample
-# used for calculation of McFadden's R^2
-# BaselineLL<-.BaseLL(Y,weights)
-termsMODEL<-list(termsMEAN,termsSD)
-formulaMODEL<-list(formulaMEAN,formulaSD)
-# If specified that there is no constant in the model remove it from the data frame.
-if (!constantMEAN){
-  savecolnames<-colnames(X)[colnames(X)!="(Intercept)"]
-  X<-X[,colnames(X)!="(Intercept)",drop=FALSE]
-  colnames(X)<-savecolnames
-}
-
-# collect variable means and check which variables are binary.
-XVarMeans<-apply(X,2,mean)
-XVarBinary<-apply(X,2,.checkbinary)  
-
-  Heteroskedastic<-TRUE # set model to heteroskedastic, check call and then switch if not.
-  if (!is.null(formulaSD)){
-    # will check if the formula for the mean is identical to the 
-    # the right hand side variables of a formula are accessible via terms in the attribute term.labels
-    meaneqnames<-attr(terms(formulaMEAN),"term.labels")
-    sdeqnames<-attr(terms(formulaSD),"term.labels")
-    if (sum(is.na(match(meaneqnames,sdeqnames)))==sum(is.na(match(sdeqnames,meaneqnames))) & sum(is.na(match(sdeqnames,meaneqnames)))==0){
-      if (constantSD==constantMEAN){
-        SameModelMEANSD<-TRUE
-        # collect the names and column numbers of variables that are in both the mean and variance equation
-        meanandvarNAME<-colnames(X)
-        meanandvarLOC<-c(1:ncol(X))
-        meanandvarLOCZ<-meanandvarLOC<-meanandvarLOC[meanandvarNAME!="(Intercept)"]
-        meanandvarNAME<-meanandvarNAME[meanandvarNAME!="(Intercept)"]
-        BothMeanVar<-data.frame(meanandvarNAME,meanandvarLOC,meanandvarLOCZ,stringsAsFactors=FALSE)
-        ZVarMeans<-XVarMeans
-        ZVarBinary<-XVarBinary
-      } 
-    }
-  }
-
-  if (!is.null(formulaSD) & !SameModelMEANSD){   
-    if (!constantSD){Z<-Z[,colnames(Z)!="(Intercept)",drop=FALSE]}
-    ZVarMeans<-apply(Z,2,mean)
-    ZVarBinary<-apply(Z,2,.checkbinary)
-    # collect the names and column numbers of variables that are in both the mean and variance equation
-    # find the colnames of Z that are the same as the colnames of X
-    meanandvarLOC<-c(1:ncol(X))[!is.na(match(colnames(X),colnames(Z)))]
-    # find the columns of Z that are in Z and X
-    meanandvarLOCZ<-match(colnames(X),colnames(Z))[!is.na(match(colnames(X),colnames(Z)))]
-    meanandvarNAME<-colnames(X)[meanandvarLOC]
-    meanandvarLOC<-meanandvarLOC[meanandvarNAME!="(Intercept)"]
-    meanandvarLOCZ<-meanandvarLOCZ[meanandvarNAME!="(Intercept)"]
-    meanandvarNAME<-meanandvarNAME[meanandvarNAME!="(Intercept)"]
-    BothMeanVar<-data.frame(meanandvarNAME,meanandvarLOC,meanandvarLOCZ,stringsAsFactors=FALSE)
-  } else if (is.null(formulaSD) & !SameModelMEANSD){
-    Z<-as.matrix(rep(1,nrow(X)),ncol=1)
-    ZVarMeans<-NULL
-    ZVarBinary<-NULL
-    Heteroskedastic<-FALSE
-    if (is.null(delta) & is.null(threshparam)){
-      # if no formula for the standard deviation is given, the threshold parameters are not specified or the standard deviation is not specified then use the unit variance assumption.
-      calcdelta<-function(x){eval({z<-x;sdmodel})-1} 
-      delta<-uniroot(calcdelta,c(-10,10),extendInt="yes",tol=.Machine$double.eps)$root # solve for delta to get the unit variance assumption
-    }
-    BothMeanVar=NULL
-  }
+  ProbFunc<-.cdf.func(link)
+  ProbFuncD<-.pdf.func(link)
+  ProbFuncDD<-.Dpdf.func(link)
   
   no.Xvar<-ncol(X)
   if (!SameModelMEANSD){no.Zvar<-ncol(Z)} else {no.Zvar<-no.Xvar}
-  # count number of different outcomes and store.
-  listoutcomes<-as.numeric(levels(as.factor(Y)))[order(as.numeric(levels(as.factor(Y))))]
-  no.outcomes<-length(listoutcomes)
-  if (no.outcomes>20 & Force==FALSE){
-    stop("More than 20 different values for outcome variable.\n If you are sure you wish to estimate this model rerun command with Force option set to TRUE.")
-  }
+  
   # set the prespecified and not prespecified parts.
   # beta
   if (!is.null(beta) & length(beta)==1){
@@ -141,6 +41,9 @@ XVarBinary<-apply(X,2,.checkbinary)
     # check that the specified vector is of correct length
     if (length(delta)!=no.Zvar){stop("Specified delta vector of incorrect length.")}
   } else if (is.null(delta)){
+    if (is.null(Z)){
+      no.Zvar<-1
+    }
     delta<-rep(NA,no.Zvar)
   }
   # threshparam
@@ -154,29 +57,29 @@ XVarBinary<-apply(X,2,.checkbinary)
   } else if (is.null(threshparam)){
     threshparam<-rep(NA,no.outcomes-1)
   }
-
-if (!is.null(beta)){
-  collectbeta<-is.na(beta)
-} else {
-  collectbeta<-!vector("logical",no.Xvar)
-}
-if (!is.null(delta)){
-  collectdelta<-is.na(delta)
-} else {
+  
+  if (!is.null(beta)){
+    collectbeta<-is.na(beta)
+  } else {
+    collectbeta<-!vector("logical",no.Xvar)
+  }
+  if (!is.null(delta)){
+    collectdelta<-is.na(delta)
+  } else {
     collectdelta<-!vector("logical",no.Zvar)
-}
-if (!is.null(threshparam)){
-  collectthreshparam<-is.na(threshparam)
-} else {
-  collectthreshparam<-!vector("logical",no.outcomes-1)
-}
-
-no.betaparams<-sum(collectbeta)
-no.deltaparams<-sum(collectdelta)
-no.threshparams<-sum(collectthreshparam)
-no.parameters<-no.betaparams+no.deltaparams+no.threshparams
-Est.Parameters<-list(beta=collectbeta,delta=collectdelta,alpha=collectthreshparam)
-
+  }
+  if (!is.null(threshparam)){
+    collectthreshparam<-is.na(threshparam)
+  } else {
+    collectthreshparam<-!vector("logical",no.outcomes-1)
+  }
+  
+  no.betaparams<-sum(collectbeta)
+  no.deltaparams<-sum(collectdelta)
+  no.threshparams<-sum(collectthreshparam)
+  no.parameters<-no.betaparams+no.deltaparams+no.threshparams
+  Est.Parameters<-list(beta=collectbeta,delta=collectdelta,alpha=collectthreshparam)
+  
   # specify the start vector in the case that it is given as null, give error message if not of correct length.
   if (is.null(start)){
     # start with a vector of zeros for the betas
@@ -230,213 +133,169 @@ Est.Parameters<-list(beta=collectbeta,delta=collectdelta,alpha=collectthreshpara
     modelframes<-NULL
   }
   
-  # break X (and Z) into chunks, relevant for each outcome. Delete X (and Z) and work with the already separated chunks
-  # will reduce memory overhead in loop
-  Xr<-list()
-  if (!SameModelMEANSD){
-    Zr<-list()
-  } else {
-    Zr<-NULL
-  }
-
-  Xr<-split.data.frame(X,Y,drop=FALSE)
-  weightsr<-split(weights,Y,drop=FALSE)
-  if (!SameModelMEANSD){
-    Zr<-split.data.frame(Z,Y,drop=FALSE)
-    rm(Z)
-  }
-  rm(X,Y)
-  
-# define function used to calculate likelihood, etc.
-if (link=="logit"){
-  ProbFunc<-function(p){plogis(p)}
-  ProbFuncD<-function(p){dlogis(p)}
-  ProbFuncDD<-function(p){dlogis(p)*(1-2*plogis(p))}
-}
-if (link=="probit"){
-  ProbFunc<-function(p){pnorm(p)}
-  ProbFuncD<-function(p){dnorm(p)}
-  ProbFuncDD<-function(p){-p*dnorm(p)}
-}
-if (link=="cauchit"){
-  ProbFunc<-function(p){pcauchy(p)}
-  ProbFuncD<-function(p){dcauchy(p)}
-  ProbFuncDD<-function(p){-2*p*dcauchy(p)/(1+p^2)}
-}
-if (link=="loglog"){
-  ProbFunc<-function(p){exp(-exp(-p))}
-  ProbFuncD<-function(p){exp(-(exp(-p)+p))}
-  ProbFuncDD<-function(p){exp(-(exp(-p)+p))*(1+exp(-p))}
-}
-if (link=="cloglog"){
-  ProbFunc<-function(p){1-exp(-exp(p))}
-  ProbFuncD<-function(p){exp(p-exp(p))}
-  ProbFuncDD<-function(p){exp(p-exp(p))*(1-exp(p))}
-}
-  
-# function that calculates log likelihood, gradient and hessian given a set of parameter values
-LLoglmx<-function(param,beta=NULL,delta=NULL,threshparam=NULL,analhessian=FALSE,robustmatrix=FALSE){
-  if (is.null(beta)){ # if elements of the vector beta are not prespecified then all are included in param
-    beta<-param[1:no.Xvar]
-    param<-param[(no.Xvar+1):length(param)] # remove from param the elements allocated to the beta vector
-  } else { # if not then fill NAs in beta with the first elements in param
-    countNA<-sum(is.na(beta))
-    if (countNA>0){beta[is.na(beta)]<-param[1:countNA]}
-    param<-param[(countNA+1):length(param)]
-  }
-  # repeat to fill the delta vector
-  if (is.null(delta)){ # if elements of the vector delta are not prespecified then all are included in param
-    if (SameModelMEANSD){
-      delta<-param[1:no.Xvar]
+  # function that calculates log likelihood, gradient and hessian given a set of parameter values
+  LLoglmx<-function(param,beta=NULL,delta=NULL,threshparam=NULL,analhessian=FALSE,robustmatrix=FALSE){
+    if (is.null(beta)){ # if elements of the vector beta are not prespecified then all are included in param
+      beta<-param[1:no.Xvar]
       param<-param[(no.Xvar+1):length(param)] # remove from param the elements allocated to the beta vector
-    } else {
-      delta<-param[1:no.Zvar]
-      param<-param[(no.Zvar+1):length(param)] # remove from param the elements allocated to the beta vector
+    } else { # if not then fill NAs in beta with the first elements in param
+      countNA<-sum(is.na(beta))
+      if (countNA>0){beta[is.na(beta)]<-param[1:countNA]}
+      param<-param[(countNA+1):length(param)]
     }
-  } else { # if not then fill NAs in delta with the first elements in param
-    countNA<-sum(is.na(delta))
-    if (countNA>0){delta[is.na(delta)]<-param[1:countNA]}
-    param<-param[(countNA+1):length(param)]
-  }
-  # repeat to fill threshparam vector.
-  if (is.null(threshparam)){
-    threshparam<-param
-  } else {
-    if (length(param)>0){threshparam[is.na(threshparam)]<-param} else {stop("Insufficient number of parameters specified.")}
-  }
-  threshparam<-c(-Inf,threshparam,Inf)
-  
-  calcprobs<-function(outcome){
-    # function that calculates relevant probabilities relevant to outcome
-    # only to be called inside LLoglmx
-    Xb<-Xr[[outcome]]%*%beta
-    if (!SameModelMEANSD){
-      Zdinv<-1/eval({z<-Zr[[outcome]]%*%delta;sdmodel})
-    } else {
-      Zdinv<-1/eval({z<-Xr[[outcome]]%*%delta;sdmodel})
+    # repeat to fill the delta vector
+    if (is.null(delta)){ # if elements of the vector delta are not prespecified then all are included in param
+      if (SameModelMEANSD){
+        delta<-param[1:no.Xvar]
+        param<-param[(no.Xvar+1):length(param)] # remove from param the elements allocated to the beta vector
+      } else {
+        delta<-param[1:no.Zvar]
+        param<-param[(no.Zvar+1):length(param)] # remove from param the elements allocated to the beta vector
+      }
+    } else { # if not then fill NAs in delta with the first elements in param
+      countNA<-sum(is.na(delta))
+      if (countNA>0){delta[is.na(delta)]<-param[1:countNA]}
+      param<-param[(countNA+1):length(param)]
     }
-    Probs<-ProbFunc((threshparam[outcome+1]-Xb)*Zdinv)-ProbFunc((threshparam[outcome]-Xb)*Zdinv)
-  }
-  
-  sdmodfirstderiv<-D(sdmodel,"z")
-  sdmodsecondderiv<-D(sdmodfirstderiv,"z")
-  
-  delta<-as.matrix(delta)
-  beta<-as.matrix(beta)
-  
-  vectorsprobs<-lapply(c(1:no.outcomes),calcprobs)
-  # if weights are used then the standard log likelihood is no longer a relevant measure of model suitability.
-  # need to calculate a pseudo-log likelihood, also for the baseline log-likelihood should take account of weights
-  
-  #loglikelihood<-sum(sapply(suppressWarnings(lapply(vectorsprobs,log)),sum))
-  wloglikelihoodvecs<-list()
-  for (i in 1:no.outcomes){
-    wloglikelihoodvecs[[i]]<-suppressWarnings(log(vectorsprobs[[i]]))*weightsr[[i]]
-  }
-  loglikelihood<-sum(sapply(wloglikelihoodvecs,sum))
-  
-  # write function to work with the matrices for each outcome separately
-  # produce the relevant gradient and hessian.
-  # afterwards can sum. Allows the use of the Map function.
-  
-  getLLgradhess<-function(X,Z,w,index){
-    j<-index
-    Xb<-X%*%beta
-    Zd<-Z%*%delta
-    Zdinv<-1/eval({z<-Zd;sdmodel})
-    if (j==1){
-      frac0<-rep(-Inf,length(Zd))
-      frac1<-(threshparam[j+1]-Xb)*Zdinv
-    } else if (j==no.outcomes){
-      frac1<-rep(Inf,length(Zd))
-      frac0<-(threshparam[j]-Xb)*Zdinv
+    # repeat to fill threshparam vector.
+    if (is.null(threshparam)){
+      threshparam<-param
     } else {
-      frac1<-(threshparam[j+1]-Xb)*Zdinv
-      frac0<-(threshparam[j]-Xb)*Zdinv
+      if (length(param)>0){threshparam[is.na(threshparam)]<-param} else {stop("Insufficient number of parameters specified.")}
+    }
+    threshparam<-c(-Inf,threshparam,Inf)
+    
+    calcprobs<-function(outcome){
+      # function that calculates relevant probabilities relevant to outcome
+      # only to be called inside LLoglmx
+      Xb<-Xr[[outcome]]%*%beta
+      if (!SameModelMEANSD){
+        Zdinv<-1/eval({z<-Zr[[outcome]]%*%delta;sdmodel})
+      } else {
+        Zdinv<-1/eval({z<-Xr[[outcome]]%*%delta;sdmodel})
+      }
+      Probs<-ProbFunc((threshparam[outcome+1]-Xb)*Zdinv)-ProbFunc((threshparam[outcome]-Xb)*Zdinv)
     }
     
-    # functions used to calculate score and hessian.
-    calcscorebeta<-function(beta){
-      # only to be called inside LLoglmx
+    sdmodfirstderiv<-D(sdmodel,"z")
+    sdmodsecondderiv<-D(sdmodfirstderiv,"z")
+    
+    delta<-as.matrix(delta)
+    beta<-as.matrix(beta)
+    
+    vectorsprobs<-lapply(c(1:no.outcomes),calcprobs)
+    # if weights are used then the standard log likelihood is no longer a relevant measure of model suitability.
+    # need to calculate a pseudo-log likelihood, also for the baseline log-likelihood should take account of weights
+    
+    #loglikelihood<-sum(sapply(suppressWarnings(lapply(vectorsprobs,log)),sum))
+    wloglikelihoodvecs<-list()
+    for (i in 1:no.outcomes){
+      wloglikelihoodvecs[[i]]<-suppressWarnings(log(vectorsprobs[[i]]))*weightsr[[i]]
+    }
+    loglikelihood<-sum(sapply(wloglikelihoodvecs,sum))
+    
+    # write function to work with the matrices for each outcome separately
+    # produce the relevant gradient and hessian.
+    # afterwards can sum. Allows the use of the Map function.
+    
+    getLLgradhess<-function(X,Z,w,index){
+      j<-index
+      Xb<-X%*%beta
+      Zd<-Z%*%delta
+      Zdinv<-1/eval({z<-Zd;sdmodel})
       if (j==1){
-        ProbderivBeta<-X[,beta]*Zdinv*(-ProbFuncD(frac1))/vectorsprobs[[j]]
+        frac0<-rep(-Inf,length(Zd))
+        frac1<-(threshparam[j+1]-Xb)*Zdinv
       } else if (j==no.outcomes){
-        ProbderivBeta<-X[,beta]*Zdinv*(ProbFuncD(frac0))/vectorsprobs[[j]]
+        frac1<-rep(Inf,length(Zd))
+        frac0<-(threshparam[j]-Xb)*Zdinv
       } else {
-        ProbderivBeta<-X[,beta]*Zdinv*(ProbFuncD(frac0)-ProbFuncD(frac1))/vectorsprobs[[j]]
+        frac1<-(threshparam[j+1]-Xb)*Zdinv
+        frac0<-(threshparam[j]-Xb)*Zdinv
       }
-      ProbderivBeta
-    }
-    
-    calcscoredelta<-function(delta){
-      # only to be called inside LLoglmx
-      if (j==1){
-        ProbderivDelta<- -Z[,delta]*eval({z<-Zd;sdmodfirstderiv})*Zdinv*frac1*ProbFuncD(frac1)/vectorsprobs[[j]]
-      } else if (j==no.outcomes){
-        ProbderivDelta<- Z[,delta]*eval({z<-Zd;sdmodfirstderiv})*Zdinv*frac0*ProbFuncD(frac0)/vectorsprobs[[j]]
+      
+      # functions used to calculate score and hessian.
+      calcscorebeta<-function(beta){
+        # only to be called inside LLoglmx
+        if (j==1){
+          ProbderivBeta<-X[,beta]*Zdinv*(-ProbFuncD(frac1))/vectorsprobs[[j]]
+        } else if (j==no.outcomes){
+          ProbderivBeta<-X[,beta]*Zdinv*(ProbFuncD(frac0))/vectorsprobs[[j]]
+        } else {
+          ProbderivBeta<-X[,beta]*Zdinv*(ProbFuncD(frac0)-ProbFuncD(frac1))/vectorsprobs[[j]]
+        }
+        ProbderivBeta
+      }
+      
+      calcscoredelta<-function(delta){
+        # only to be called inside LLoglmx
+        if (j==1){
+          ProbderivDelta<- -Z[,delta]*eval({z<-Zd;sdmodfirstderiv})*Zdinv*frac1*ProbFuncD(frac1)/vectorsprobs[[j]]
+        } else if (j==no.outcomes){
+          ProbderivDelta<- Z[,delta]*eval({z<-Zd;sdmodfirstderiv})*Zdinv*frac0*ProbFuncD(frac0)/vectorsprobs[[j]]
+        } else {
+          ProbderivDelta<- -Z[,delta]*eval({z<-Zd;sdmodfirstderiv})*Zdinv*(frac1*ProbFuncD(frac1)-frac0*ProbFuncD(frac0))/vectorsprobs[[j]]
+        }
+        ProbderivDelta
+      }
+      
+      calcscorethreshparam<-function(alpha){
+        # only to be called inside LLoglmx
+        if (alpha==j){
+          Probderivalpha<- -Zdinv*ProbFuncD(frac0)/vectorsprobs[[j]] 
+        } else if (alpha==j+1){
+          Probderivalpha<- Zdinv*ProbFuncD(frac1)/vectorsprobs[[j]]
+        } else {
+          Probderivalpha<-vector("numeric",nrow(X))
+        }
+        Probderivalpha
+      }
+      
+      scorevector<-vector("numeric",no.parameters)
+      
+      if (no.betaparams>0){
+        vectorprobderivbeta<-sapply(c(1:length(beta))[collectbeta],calcscorebeta)
+        scorevector[1:sum(collectbeta)]<-scorevector[1:sum(collectbeta)]+apply(vectorprobderivbeta*w,2,sum)
+      }
+      
+      if (no.deltaparams>0){
+        vectorprobderivdelta<-sapply(c(1:length(delta))[collectdelta],calcscoredelta)
+        scorevector[(1+no.betaparams):(no.betaparams+no.deltaparams)]<-scorevector[(1+no.betaparams):(no.betaparams+no.deltaparams)]+apply(vectorprobderivdelta*w,2,sum)  
+      }
+      
+      if (no.threshparams>0){
+        vectorprobderivthreshparam<-sapply(c(2:(length(threshparam)-1))[collectthreshparam],calcscorethreshparam)
+        scorevector[(1+no.betaparams+no.deltaparams):no.parameters]<-scorevector[(1+no.betaparams+no.deltaparams):no.parameters]+apply(vectorprobderivthreshparam*w,2,sum) 
+      }
+      
+      if (robustmatrix){
+        if (no.betaparams>0 & no.deltaparams>0){
+          scorevecs<-cbind(vectorprobderivbeta,vectorprobderivdelta)
+          if (no.threshparams>0){
+            scorevecs<-cbind(scorevecs,vectorprobderivthreshparam)
+          }
+        } else if (no.betaparams>0){
+          scorevecs<-vectorprobderivbeta
+          if (no.threshparams>0){
+            scorevecs<-cbind(scorevecs,vectorprobderivthreshparam)
+          }
+        } else if (no.deltaparams>0){
+          scorevecs<-vectorprobderivdelta
+          if (no.threshparams>0){
+            scorevecs<-cbind(scorevecs,vectorprobderivthreshparam)
+          }
+        }
+        BHHHmatrix<-matrix(vector("numeric",ncol(scorevecs)^2),nrow=ncol(scorevecs),ncol=ncol(scorevecs))
+        for (v in 1:nrow(scorevecs)){
+          obmat<-scorevecs[v,]%*%t(scorevecs[v,])
+          BHHHmatrix<-BHHHmatrix+(w[v]^2)*obmat
+        }
       } else {
-        ProbderivDelta<- -Z[,delta]*eval({z<-Zd;sdmodfirstderiv})*Zdinv*(frac1*ProbFuncD(frac1)-frac0*ProbFuncD(frac0))/vectorsprobs[[j]]
+        BHHHmatrix<-NULL
       }
-      ProbderivDelta
-    }
-    
-    calcscorethreshparam<-function(alpha){
-      # only to be called inside LLoglmx
-      if (alpha==j){
-        Probderivalpha<- -Zdinv*ProbFuncD(frac0)/vectorsprobs[[j]] 
-      } else if (alpha==j+1){
-        Probderivalpha<- Zdinv*ProbFuncD(frac1)/vectorsprobs[[j]]
-      } else {
-        Probderivalpha<-vector("numeric",nrow(X))
-      }
-      Probderivalpha
-    }
-    
-    scorevector<-vector("numeric",no.parameters)
-    
-    if (no.betaparams>0){
-      vectorprobderivbeta<-sapply(c(1:length(beta))[collectbeta],calcscorebeta)
-      scorevector[1:sum(collectbeta)]<-scorevector[1:sum(collectbeta)]+apply(vectorprobderivbeta*w,2,sum)
-    }
-    
-    if (no.deltaparams>0){
-      vectorprobderivdelta<-sapply(c(1:length(delta))[collectdelta],calcscoredelta)
-      scorevector[(1+no.betaparams):(no.betaparams+no.deltaparams)]<-scorevector[(1+no.betaparams):(no.betaparams+no.deltaparams)]+apply(vectorprobderivdelta*w,2,sum)  
-    }
-    
-    if (no.threshparams>0){
-      vectorprobderivthreshparam<-sapply(c(2:(length(threshparam)-1))[collectthreshparam],calcscorethreshparam)
-      scorevector[(1+no.betaparams+no.deltaparams):no.parameters]<-scorevector[(1+no.betaparams+no.deltaparams):no.parameters]+apply(vectorprobderivthreshparam*w,2,sum) 
-    }
-    
-    if (robustmatrix){
-      if (no.betaparams>0 & no.deltaparams>0){
-        scorevecs<-cbind(vectorprobderivbeta,vectorprobderivdelta)
-        if (no.threshparams>0){
-          scorevecs<-cbind(scorevecs,vectorprobderivthreshparam)
-        }
-      } else if (no.betaparams>0){
-        scorevecs<-vectorprobderivbeta
-        if (no.threshparams>0){
-          scorevecs<-cbind(scorevecs,vectorprobderivthreshparam)
-        }
-      } else if (no.deltaparams>0){
-        scorevecs<-vectorprobderivdelta
-        if (no.threshparams>0){
-          scorevecs<-cbind(scorevecs,vectorprobderivthreshparam)
-        }
-      }
-      BHHHmatrix<-matrix(vector("numeric",ncol(scorevecs)^2),nrow=ncol(scorevecs),ncol=ncol(scorevecs))
-      for (v in 1:nrow(scorevecs)){
-        obmat<-scorevecs[v,]%*%t(scorevecs[v,])
-        BHHHmatrix<-BHHHmatrix+(w[v]^2)*obmat
-      }
-    } else {
-      BHHHmatrix<-NULL
-    }
-    
-    
-    if (analhessian){
+      
+      
+      if (analhessian){
         calc2ndderivprobbetabeta<-function(x){ # x is a two element vector specifying location of each coefficient
           # only to be called inside LLoglmx
           if (j==1){
@@ -508,143 +367,141 @@ LLoglmx<-function(param,beta=NULL,delta=NULL,threshparam=NULL,analhessian=FALSE,
           }
           sum(probderiv2alphaalpha*w)
         }
-
-      hessian<-matrix(vector("numeric",no.parameters^2),nrow=no.parameters,ncol=no.parameters)
-      # first add the term that is derived from the cross product of gradients
-      if (no.betaparams>0 & no.deltaparams>0){
-        scorevecs<-cbind(vectorprobderivbeta,vectorprobderivdelta)
+        
+        hessian<-matrix(vector("numeric",no.parameters^2),nrow=no.parameters,ncol=no.parameters)
+        # first add the term that is derived from the cross product of gradients
+        if (no.betaparams>0 & no.deltaparams>0){
+          scorevecs<-cbind(vectorprobderivbeta,vectorprobderivdelta)
+          if (no.threshparams>0){
+            scorevecs<-cbind(scorevecs,vectorprobderivthreshparam)
+          }
+          crossprodterms<- -t(scorevecs)%*%(scorevecs*w)
+          crossprodterms[upper.tri(crossprodterms)]<-0
+          hessian<-hessian+crossprodterms
+        } else if (no.betaparams>0){
+          scorevecs<-vectorprobderivbeta
+          if (no.threshparams>0){
+            scorevecs<-cbind(scorevecs,vectorprobderivthreshparam)
+          }
+          crossprodterms<- -t(scorevecs)%*%(scorevecs*w)
+          crossprodterms[upper.tri(crossprodterms)]<-0
+          hessian<-hessian+crossprodterms
+        } else if (no.deltaparams>0){
+          scorevecs<-vectorprobderivdelta
+          if (no.threshparams>0){
+            scorevecs<-cbind(scorevecs,vectorprobderivthreshparam)
+          }
+          crossprodterms<- -t(scorevecs)%*%(scorevecs*w)
+          crossprodterms[upper.tri(crossprodterms)]<-0
+          hessian<-hessian+crossprodterms
+        }
+        # then do the same with the cross derivatives
+        # clear space in memory, remove first derivatives
+        if (no.deltaparams>0){rm(vectorprobderivdelta)}
+        if (no.betaparams>0){rm(vectorprobderivbeta)}
+        if (no.threshparams>0){rm(vectorprobderivthreshparam)}
+        
+        if (no.betaparams>0){
+          listderivs<-.paircombn(c(1:length(beta))[collectbeta])
+          secondderivterms<-sapply(listderivs,calc2ndderivprobbetabeta)
+          startrow<-1
+          endrow<-no.betaparams
+          startcol_1<-0
+          counter<-1
+          while (counter<=no.betaparams){
+            hessian[(startcol_1+counter):endrow,counter+startcol_1]<-hessian[(startcol_1+counter):endrow,counter+startcol_1]+secondderivterms[(no.betaparams*(counter-1)-(counter-2)*(counter-1)/2+1):(no.betaparams*counter-(counter*(counter-1)/2))]
+            counter<-counter+1
+          }
+        }
+        
+        if (no.deltaparams>0){
+          listderivs<-.paircombn(c(1:length(delta))[collectdelta])
+          secondderivterms<-sapply(listderivs,calc2ndderivprobdeltadelta)
+          startrow<-no.betaparams+1
+          endrow<-no.betaparams+no.deltaparams
+          startcol_1<-no.betaparams
+          counter<-1
+          while (counter<=no.deltaparams){
+            hessian[(startcol_1+counter):endrow,counter+startcol_1]<-hessian[(startcol_1+counter):endrow,counter+startcol_1]+secondderivterms[(no.deltaparams*(counter-1)-(counter-2)*(counter-1)/2+1):(no.deltaparams*counter-(counter*(counter-1)/2))]
+            counter<-counter+1
+          }
+        }
+        
         if (no.threshparams>0){
-          scorevecs<-cbind(scorevecs,vectorprobderivthreshparam)
+          listderivs<-.paircombn(c(2:(length(threshparam)-1))[collectthreshparam])
+          secondderivterms<-sapply(listderivs,calc2ndderivprobalphaalpha)
+          startrow<-no.betaparams+no.deltaparams+1
+          endrow<-no.betaparams+no.deltaparams+no.threshparams
+          startcol_1<-no.betaparams+no.deltaparams
+          counter<-1
+          while (counter<=no.threshparams){
+            hessian[(startcol_1+counter):endrow,counter+startcol_1]<-hessian[(startcol_1+counter):endrow,counter+startcol_1]+secondderivterms[((no.threshparams*(counter-1)-(counter-2)*(counter-1)/2+1)):(no.threshparams*counter-(counter*(counter-1)/2))]
+            counter<-counter+1
+          } 
         }
-        crossprodterms<- -t(scorevecs)%*%(scorevecs*w)
-        crossprodterms[upper.tri(crossprodterms)]<-0
-        hessian<-hessian+crossprodterms
-      } else if (no.betaparams>0){
-        scorevecs<-vectorprobderivbeta
-        if (no.threshparams>0){
-          scorevecs<-cbind(scorevecs,vectorprobderivthreshparam)
+        
+        if (no.betaparams>0 & no.deltaparams>0){
+          listderivs<-.paircombn(c(1:length(beta))[collectbeta],c(1:length(delta))[collectdelta],same=FALSE)
+          secondderivterms<-sapply(listderivs,calc2ndderivprobbetadelta)
+          startrow<-no.betaparams+1
+          startcol_1<-0
+          endrow<-no.betaparams+no.deltaparams
+          counter<-1
+          while (counter<=no.betaparams){
+            hessian[startrow:endrow,counter]<-hessian[startrow:endrow,counter]+secondderivterms[(1+(counter-1)*no.deltaparams):(counter*no.deltaparams)]
+            counter<-counter+1
+          }
         }
-        crossprodterms<- -t(scorevecs)%*%(scorevecs*w)
-        crossprodterms[upper.tri(crossprodterms)]<-0
-        hessian<-hessian+crossprodterms
-      } else if (no.deltaparams>0){
-        scorevecs<-vectorprobderivdelta
-        if (no.threshparams>0){
-          scorevecs<-cbind(scorevecs,vectorprobderivthreshparam)
+        
+        if (no.betaparams>0 & no.threshparams>0){
+          listderivs<-.paircombn(c(1:length(beta))[collectbeta],c(2:(length(threshparam)-1))[collectthreshparam],same=FALSE)
+          secondderivterms<-sapply(listderivs,calc2ndderivprobbetaalpha)
+          startrow<-no.betaparams+no.deltaparams+1
+          startcol_1<-0
+          endrow<-no.betaparams+no.deltaparams+no.threshparams
+          counter<-1
+          while (counter<=no.betaparams){
+            hessian[startrow:endrow,counter]<-hessian[startrow:endrow,counter]+secondderivterms[(1+(counter-1)*no.threshparams):(counter*no.threshparams)]
+            counter<-counter+1
+          }
         }
-        crossprodterms<- -t(scorevecs)%*%(scorevecs*w)
-        crossprodterms[upper.tri(crossprodterms)]<-0
-        hessian<-hessian+crossprodterms
-      }
-      # then do the same with the cross derivatives
-      # clear space in memory, remove first derivatives
-      if (no.deltaparams>0){rm(vectorprobderivdelta)}
-      if (no.betaparams>0){rm(vectorprobderivbeta)}
-      if (no.threshparams>0){rm(vectorprobderivthreshparam)}
-      
-      if (no.betaparams>0){
-        listderivs<-.paircombn(c(1:length(beta))[collectbeta])
-        secondderivterms<-sapply(listderivs,calc2ndderivprobbetabeta)
-        startrow<-1
-        endrow<-no.betaparams
-        startcol_1<-0
-        counter<-1
-        while (counter<=no.betaparams){
-          hessian[(startcol_1+counter):endrow,counter+startcol_1]<-hessian[(startcol_1+counter):endrow,counter+startcol_1]+secondderivterms[(no.betaparams*(counter-1)-(counter-2)*(counter-1)/2+1):(no.betaparams*counter-(counter*(counter-1)/2))]
-          counter<-counter+1
-        }
-      }
-      
-      if (no.deltaparams>0){
-        listderivs<-.paircombn(c(1:length(delta))[collectdelta])
-        secondderivterms<-sapply(listderivs,calc2ndderivprobdeltadelta)
-        startrow<-no.betaparams+1
-        endrow<-no.betaparams+no.deltaparams
-        startcol_1<-no.betaparams
-        counter<-1
-        while (counter<=no.deltaparams){
-          hessian[(startcol_1+counter):endrow,counter+startcol_1]<-hessian[(startcol_1+counter):endrow,counter+startcol_1]+secondderivterms[(no.deltaparams*(counter-1)-(counter-2)*(counter-1)/2+1):(no.deltaparams*counter-(counter*(counter-1)/2))]
-          counter<-counter+1
+        
+        if (no.deltaparams>0 & no.threshparams>0){
+          listderivs<-.paircombn(c(1:length(delta))[collectdelta],c(2:(length(threshparam)-1))[collectthreshparam],same=FALSE)
+          secondderivterms<-sapply(listderivs,calc2ndderivprobdeltaalpha)
+          startrow<-no.betaparams+no.deltaparams+1
+          startcol_1<-no.betaparams
+          endrow<-no.betaparams+no.deltaparams+no.threshparams
+          counter<-1
+          while (counter<=no.deltaparams){
+            hessian[startrow:endrow,counter+startcol_1]<-hessian[startrow:endrow,counter+startcol_1]+secondderivterms[(1+(counter-1)*no.threshparams):(counter*no.threshparams)]
+            counter<-counter+1
+          }
         }
       }
-      
-      if (no.threshparams>0){
-        listderivs<-.paircombn(c(2:(length(threshparam)-1))[collectthreshparam])
-        secondderivterms<-sapply(listderivs,calc2ndderivprobalphaalpha)
-        startrow<-no.betaparams+no.deltaparams+1
-        endrow<-no.betaparams+no.deltaparams+no.threshparams
-        startcol_1<-no.betaparams+no.deltaparams
-        counter<-1
-        while (counter<=no.threshparams){
-          hessian[(startcol_1+counter):endrow,counter+startcol_1]<-hessian[(startcol_1+counter):endrow,counter+startcol_1]+secondderivterms[((no.threshparams*(counter-1)-(counter-2)*(counter-1)/2+1)):(no.threshparams*counter-(counter*(counter-1)/2))]
-          counter<-counter+1
-        } 
-      }
-      
-      if (no.betaparams>0 & no.deltaparams>0){
-        listderivs<-.paircombn(c(1:length(beta))[collectbeta],c(1:length(delta))[collectdelta],same=FALSE)
-        secondderivterms<-sapply(listderivs,calc2ndderivprobbetadelta)
-        startrow<-no.betaparams+1
-        startcol_1<-0
-        endrow<-no.betaparams+no.deltaparams
-        counter<-1
-        while (counter<=no.betaparams){
-          hessian[startrow:endrow,counter]<-hessian[startrow:endrow,counter]+secondderivterms[(1+(counter-1)*no.deltaparams):(counter*no.deltaparams)]
-          counter<-counter+1
-        }
-      }
-      
-      if (no.betaparams>0 & no.threshparams>0){
-        listderivs<-.paircombn(c(1:length(beta))[collectbeta],c(2:(length(threshparam)-1))[collectthreshparam],same=FALSE)
-        secondderivterms<-sapply(listderivs,calc2ndderivprobbetaalpha)
-        startrow<-no.betaparams+no.deltaparams+1
-        startcol_1<-0
-        endrow<-no.betaparams+no.deltaparams+no.threshparams
-        counter<-1
-        while (counter<=no.betaparams){
-          hessian[startrow:endrow,counter]<-hessian[startrow:endrow,counter]+secondderivterms[(1+(counter-1)*no.threshparams):(counter*no.threshparams)]
-          counter<-counter+1
-        }
-      }
-      
-      if (no.deltaparams>0 & no.threshparams>0){
-        listderivs<-.paircombn(c(1:length(delta))[collectdelta],c(2:(length(threshparam)-1))[collectthreshparam],same=FALSE)
-        secondderivterms<-sapply(listderivs,calc2ndderivprobdeltaalpha)
-        startrow<-no.betaparams+no.deltaparams+1
-        startcol_1<-no.betaparams
-        endrow<-no.betaparams+no.deltaparams+no.threshparams
-        counter<-1
-        while (counter<=no.deltaparams){
-          hessian[startrow:endrow,counter+startcol_1]<-hessian[startrow:endrow,counter+startcol_1]+secondderivterms[(1+(counter-1)*no.threshparams):(counter*no.threshparams)]
-          counter<-counter+1
-        }
-      }
+      output<-list(scorevector,hessian,BHHHmatrix)  
+    }
+    if (SameModelMEANSD){
+      collectresults<-Map(getLLgradhess,Xr,Xr,weightsr,c(1:no.outcomes))
+    } else {
+      collectresults<-Map(getLLgradhess,Xr,Zr,weightsr,c(1:no.outcomes))
+    }
+    scorevector<-Reduce("+",lapply(collectresults,function(x){x[[1]]}))
+    
+    attr(loglikelihood,"gradient")<-scorevector
+    if (analhessian){
+      # if coded correctly the hessian calculated up to now is lower triangular, need to make it symmetric
+      hessian<-Reduce("+",lapply(collectresults,function(x){x[[2]]}))
+      hessian<-hessian+t(hessian)-diag(diag(hessian))
+      attr(loglikelihood,"hessian")<-hessian
+    }
+    if (robustmatrix){
+      BHHHmatrix<-Reduce("+",lapply(collectresults, function(x){x[[3]]}))
+      attr(loglikelihood,"BHHHhessian")<-BHHHmatrix
+    } 
+    loglikelihood
   }
-  output<-list(scorevector,hessian,BHHHmatrix)  
-  }
-  if (SameModelMEANSD){
-    collectresults<-Map(getLLgradhess,Xr,Xr,weightsr,c(1:no.outcomes))
-  } else {
-    collectresults<-Map(getLLgradhess,Xr,Zr,weightsr,c(1:no.outcomes))
-  }
-  scorevector<-Reduce("+",lapply(collectresults,function(x){x[[1]]}))
   
-  
-  
-  
-  attr(loglikelihood,"gradient")<-scorevector
-  if (analhessian){
-    # if coded correctly the hessian calculated up to now is lower triangular, need to make it symmetric
-    hessian<-Reduce("+",lapply(collectresults,function(x){x[[2]]}))
-    hessian<-hessian+t(hessian)-diag(diag(hessian))
-    attr(loglikelihood,"hessian")<-hessian
-  }
-  if (robustmatrix){
-    BHHHmatrix<-Reduce("+",lapply(collectresults, function(x){x[[3]]}))
-    attr(loglikelihood,"BHHHhessian")<-BHHHmatrix
-  } 
-  loglikelihood
-}
   # function that calculates the log-likelihood, as a function of the parameters that are not prespecified.
   # the maxLik function used to maximise the log-likelihood requires a function of only the estimated parameters.
   LLoglmxTOP<-function(param){LLoglmx(param,beta=beta,delta=delta,threshparam=threshparam,analhessian=analhessian)}
@@ -653,7 +510,7 @@ LLoglmx<-function(param,beta=NULL,delta=NULL,threshparam=NULL,analhessian=FALSE,
   # just remains to extract results and store.
   
   coefficients<-maxLikRes$estimate
-  if (robust){
+  if (robustmatrix){
     LLoutput<-LLoglmx(coefficients,beta=beta,delta=delta,threshparam=threshparam,analhessian=analhessian,robustmatrix = TRUE)
     BHHHmatrix<-attr(LLoutput,"BHHHhessian")
   } else {
@@ -683,16 +540,507 @@ LLoglmx<-function(param,beta=NULL,delta=NULL,threshparam=NULL,analhessian=FALSE,
   loglikelihood<-maxLikRes$maximum
   #attr(loglikelihood,"BaselineLL")<-BaselineLL
   attr(loglikelihood,"No.Obs")<-No.Obs
-  if (weighted){
+  if (sum(w==rep(1,length(w)))!=length(w)){
     weights<-weights
   } else {
     weights<-NULL
   }
-
-  results<-list(loglikelihood=loglikelihood,link=link,no.iterations=maxLikRes$iterations,coefficients=coefficients,returnCode=maxLikRes$code,call=call,gradient=maxLikRes$gradient,terms=termsMODEL,formula=formulaMODEL,NoVarModData=NoVarModData
-                ,hessian=maxLikRes$hessian,BHHHhessian=BHHHmatrix,Hetero=Heteroskedastic,NOutcomes=no.outcomes,Outcomes=listoutcomes,BothEq=BothMeanVar,sdmodel=sdmodel,allparams=allparameters,varMeans=list(XVarMeans,ZVarMeans),varBinary=list(XVarBinary,ZVarBinary),Est.Parameters=Est.Parameters,modelframes=modelframes)
-  class(results)<-c("oglmx")
+  
+  results<-list(loglikelihood=loglikelihood,link=link,no.iterations=maxLikRes$iterations,coefficients=coefficients,returnCode=maxLikRes$code,gradient=maxLikRes$gradient
+                ,hessian=maxLikRes$hessian,BHHHhessian=BHHHmatrix,NOutcomes=no.outcomes,Outcomes=listoutcomes,sdmodel=sdmodel,allparams=allparameters,Est.Parameters=Est.Parameters,modelframes=modelframes)
+  class(results)<-c("oglmx.fit")
   invisible(results)
+}
+
+oglmx<-function(formulaMEAN,formulaSD=NULL,data,start=NULL,weights=NULL,link="probit",constantMEAN=TRUE,constantSD=TRUE,beta=NULL,delta=NULL,threshparam=NULL,analhessian=TRUE,sdmodel=expression(exp(z)),SameModelMEANSD=FALSE,na.action,savemodelframe=FALSE,Force=FALSE,robust=FALSE){
+  call<-match.call()
+  names(call)[match("formulaMEAN",names(call),0)]<-"formula"
+  m<-match(c("formula","data","subset","weights", "na.action", "offset"),names(call),0)
+  mf<-call[c(1L,m)]
+  mf$drop.unused.levels <- TRUE
+  mf[[1L]]<- quote(stats::model.frame)  
+  mf<-eval(mf,parent.frame())
+  weights<-as.vector(model.weights(mf))
+  termsMEAN<-terms(mf)
+  X<-model.matrix(formulaMEAN,mf)
+  Y<-model.response(mf,"numeric")
+  KeepY<-!is.na(Y)
+  KeepX<-!apply(X,1,.IsNARow)
+  if (!is.null(formulaSD) & !SameModelMEANSD){
+    dataframeSD<-model.frame(formulaSD,data=data,na.action=na.pass)
+    Z<-model.matrix(formulaSD,dataframeSD)
+    KeepZ<-!apply(Z,1,.IsNARow)
+    X<-X[KeepX & KeepZ & KeepY, ,drop=FALSE]
+    Z<-Z[KeepX & KeepZ & KeepY, ,drop=FALSE]
+    Y<-Y[KeepX & KeepZ & KeepY]
+    termsSD<-terms(dataframeSD)
+  } else {
+    KeepZ<-!vector("logical",nrow(X))
+    X<-X[KeepX & KeepY, ,drop=FALSE]
+    Y<-Y[KeepX & KeepY]
+    termsSD<-NULL
+  }
+  if (!is.null(weights)){
+    weights<-weights[KeepX & KeepY & KeepZ]
+    robust<-TRUE
+    X<-X[!is.na(weights), ,drop=FALSE]
+    Y<-Y[!is.na(weights)]
+    if (!is.null(formulaSD) & !SameModelMEANSD){
+      Z<-Z[!is.na(weights)]
+    }
+    weights<-weights[!is.na(weights)]
+    weighted<-TRUE
+    weights<-weights*length(weights)/sum(weights)
+  } else {
+    weights<-rep_len(1,length(Y))
+    weighted<-FALSE
+  }
+  NoVarModData<-data.frame(Y,weights)
+  
+  No.Obs<-length(Y)
+  termsMODEL<-list(termsMEAN,termsSD)
+  formulaMODEL<-list(formulaMEAN,formulaSD)
+  # If specified that there is no constant in the model remove it from the data frame.
+  if (!constantMEAN){
+    savecolnames<-colnames(X)[colnames(X)!="(Intercept)"]
+    X<-X[,colnames(X)!="(Intercept)",drop=FALSE]
+    colnames(X)<-savecolnames
+  }
+  # collect variable means and check which variables are binary.
+  XVarMeans<-apply(X,2,mean)
+  XVarBinary<-apply(X,2,.checkbinary)  
+  
+  Heteroskedastic<-TRUE # set model to heteroskedastic, check call and then switch if not.
+  if (!is.null(formulaSD)){
+    # will check if the formula for the mean is identical to the 
+    # the right hand side variables of a formula are accessible via terms in the attribute term.labels
+    meaneqnames<-attr(terms(formulaMEAN),"term.labels")
+    sdeqnames<-attr(terms(formulaSD),"term.labels")
+    if (sum(is.na(match(meaneqnames,sdeqnames)))==sum(is.na(match(sdeqnames,meaneqnames))) & sum(is.na(match(sdeqnames,meaneqnames)))==0){
+      if (constantSD==constantMEAN){
+        SameModelMEANSD<-TRUE
+        # collect the names and column numbers of variables that are in both the mean and variance equation
+        meanandvarNAME<-colnames(X)
+        meanandvarLOC<-c(1:ncol(X))
+        meanandvarLOCZ<-meanandvarLOC<-meanandvarLOC[meanandvarNAME!="(Intercept)"]
+        meanandvarNAME<-meanandvarNAME[meanandvarNAME!="(Intercept)"]
+        BothMeanVar<-data.frame(meanandvarNAME,meanandvarLOC,meanandvarLOCZ,stringsAsFactors=FALSE)
+        ZVarMeans<-XVarMeans
+        ZVarBinary<-XVarBinary
+      } 
+    }
+  }
+  
+  if (!is.null(formulaSD) & !SameModelMEANSD){   
+    if (!constantSD){Z<-Z[,colnames(Z)!="(Intercept)",drop=FALSE]}
+    ZVarMeans<-apply(Z,2,mean)
+    ZVarBinary<-apply(Z,2,.checkbinary)
+    # collect the names and column numbers of variables that are in both the mean and variance equation
+    # find the colnames of Z that are the same as the colnames of X
+    meanandvarLOC<-c(1:ncol(X))[!is.na(match(colnames(X),colnames(Z)))]
+    # find the columns of Z that are in Z and X
+    meanandvarLOCZ<-match(colnames(X),colnames(Z))[!is.na(match(colnames(X),colnames(Z)))]
+    meanandvarNAME<-colnames(X)[meanandvarLOC]
+    meanandvarLOC<-meanandvarLOC[meanandvarNAME!="(Intercept)"]
+    meanandvarLOCZ<-meanandvarLOCZ[meanandvarNAME!="(Intercept)"]
+    meanandvarNAME<-meanandvarNAME[meanandvarNAME!="(Intercept)"]
+    BothMeanVar<-data.frame(meanandvarNAME,meanandvarLOC,meanandvarLOCZ,stringsAsFactors=FALSE)
+  } else if (is.null(formulaSD) & !SameModelMEANSD){
+    Z<-as.matrix(rep(1,nrow(X)),ncol=1)
+    ZVarMeans<-NULL
+    ZVarBinary<-NULL
+    Heteroskedastic<-FALSE
+    if (is.null(delta) & is.null(threshparam)){
+      # if no formula for the standard deviation is given, the threshold parameters are not specified or the standard deviation is not specified then use the unit variance assumption.
+      calcdelta<-function(x){eval({z<-x;sdmodel})-1} 
+      delta<-uniroot(calcdelta,c(-10,10),extendInt="yes",tol=.Machine$double.eps)$root # solve for delta to get the unit variance assumption
+    }
+    BothMeanVar=NULL
+  }
+  checkoutcomes<-.checkoutcomes(Y,Force=Force)
+  listoutcomes<-checkoutcomes[[1]]
+  no.outcomes<-checkoutcomes[[2]]
+  
+  output<-oglmx.fit(Y,X,Z,w=weights,link = link,sdmodel = sdmodel,beta=beta,delta=delta,threshparam=threshparam,analhessian=analhessian,robustmatrix=robust,start=start)
+  output<-append(output,list(call=call,terms=termsMODEL,formula=formulaMODEL,NoVarModData=NoVarModData,Hetero=Heteroskedastic,BothEq=BothMeanVar,varMeans=list(XVarMeans,ZVarMeans),varBinary=list(XVarBinary,ZVarBinary)))
+  class(output)<-"oglmx"
+  output
+}
+
+probit.reg<-function(formula,data,start=NULL,weights = NULL,beta=NULL,analhessian=TRUE,na.action,savemodelframe=FALSE,robust=FALSE){
+  call<-match.call()
+  m<-match(c("formula","data","subset","weights", "na.action", "offset"),names(call),0)
+  mf<-call[c(1L,m)]
+  mf$drop.unused.levels <- TRUE
+  mf[[1L]]<- quote(stats::model.frame)  
+  mf<-eval(mf,parent.frame())
+  weights<-as.vector(model.weights(mf))  
+  termsMEAN<-terms(mf)
+  X<-model.matrix(formula,mf)
+  Y<-model.response(mf,"numeric")
+  KeepY<-!is.na(Y)
+  KeepX<-!apply(X,1,.IsNARow)
+  if (!is.null(weights)){
+    weights<-weights[KeepX & KeepY]
+    robust<-TRUE
+    X<-X[!is.na(weights), ,drop=FALSE]
+    Y<-Y[!is.na(weights)]
+    weights<-weights[!is.na(weights)]
+    weighted<-TRUE
+    weights<-weights*length(weights)/sum(weights)
+  } else {
+    weights<-rep_len(1,length(Y))
+    weighted<-FALSE
+  }
+  NoVarModData<-data.frame(Y,weights)
+  
+  No.Obs<-length(Y)
+  termsMODEL<-list(termsMEAN)
+  formulaMODEL<-list(formula)
+  # collect variable means and check which variables are binary.
+  XVarMeans<-apply(X,2,mean)
+  XVarBinary<-apply(X,2,.checkbinary)
+  
+  Z<-as.matrix(rep(1,nrow(X)),ncol=1)
+  ZVarMeans<-NULL
+  ZVarBinary<-NULL
+  Heteroskedastic<-FALSE
+  BothMeanVar=NULL
+  
+  checkoutcomes<-.checkoutcomes(Y,Force=FALSE,binary=TRUE)
+  listoutcomes<-checkoutcomes[[1]]
+  no.outcomes<-2
+  
+  output<-oglmx.fit(Y,X,Z,w=weights,link = "probit",beta=beta,delta=0,threshparam=0,analhessian=analhessian,robustmatrix=robust,start=start)
+  output<-append(output,list(call=call,terms=termsMODEL,formula=formulaMODEL,NoVarModData=NoVarModData,Hetero=Heteroskedastic,BothEq=BothMeanVar,varMeans=list(XVarMeans,ZVarMeans),varBinary=list(XVarBinary,ZVarBinary)))
+  class(output)<-"oglmx"
+  output
+}
+
+logit.reg<-function(formula,data,start=NULL,weights=NULL,beta=NULL,analhessian=TRUE,na.action,savemodelframe=FALSE,robust=FALSE){
+  call<-match.call()
+  m<-match(c("formula","data","subset","weights", "na.action", "offset"),names(call),0)
+  mf<-call[c(1L,m)]
+  mf$drop.unused.levels <- TRUE
+  mf[[1L]]<- quote(stats::model.frame)  
+  mf<-eval(mf,parent.frame())
+  weights<-as.vector(model.weights(mf))  
+  termsMEAN<-terms(mf)
+  X<-model.matrix(formula,mf)
+  Y<-model.response(mf,"numeric")
+  KeepY<-!is.na(Y)
+  KeepX<-!apply(X,1,.IsNARow)
+  if (!is.null(weights)){
+    weights<-weights[KeepX & KeepY]
+    robust<-TRUE
+    X<-X[!is.na(weights), ,drop=FALSE]
+    Y<-Y[!is.na(weights)]
+    weights<-weights[!is.na(weights)]
+    weighted<-TRUE
+    weights<-weights*length(weights)/sum(weights)
+  } else {
+    weights<-rep_len(1,length(Y))
+    weighted<-FALSE
+  }
+  NoVarModData<-data.frame(Y,weights)
+  
+  No.Obs<-length(Y)
+  termsMODEL<-list(termsMEAN)
+  formulaMODEL<-list(formula)
+  # collect variable means and check which variables are binary.
+  XVarMeans<-apply(X,2,mean)
+  XVarBinary<-apply(X,2,.checkbinary)
+  
+  Z<-as.matrix(rep(1,nrow(X)),ncol=1)
+  ZVarMeans<-NULL
+  ZVarBinary<-NULL
+  Heteroskedastic<-FALSE
+  BothMeanVar=NULL
+  
+  checkoutcomes<-.checkoutcomes(Y,Force=FALSE,binary=TRUE)
+  listoutcomes<-checkoutcomes[[1]]
+  no.outcomes<-2
+  
+  output<-oglmx.fit(Y,X,Z,w=weights,link = "logit",beta=beta,delta=0,threshparam=0,analhessian=analhessian,robustmatrix=robust,start=start)
+  output<-append(output,list(call=call,terms=termsMODEL,formula=formulaMODEL,NoVarModData=NoVarModData,Hetero=Heteroskedastic,BothEq=BothMeanVar,varMeans=list(XVarMeans,ZVarMeans),varBinary=list(XVarBinary,ZVarBinary)))
+  class(output)<-"oglmx"
+  output
+}
+
+oprobit.reg<-function(formula,data,start=NULL,weights=NULL,beta=NULL,threshparam=NULL,analhessian=TRUE,na.action,savemodelframe=FALSE,robust=FALSE,Force=FALSE){
+  call<-match.call()
+  m<-match(c("formula","data","subset","weights", "na.action", "offset"),names(call),0)
+  mf<-call[c(1L,m)]
+  mf$drop.unused.levels <- TRUE
+  mf[[1L]]<- quote(stats::model.frame)  
+  mf<-eval(mf,parent.frame())
+  weights<-as.vector(model.weights(mf))
+  termsMEAN<-terms(mf)
+  X<-model.matrix(formula,mf)
+  Y<-model.response(mf,"numeric")
+  KeepY<-!is.na(Y)
+  KeepX<-!apply(X,1,.IsNARow)
+  if (!is.null(weights)){
+    weights<-weights[KeepX & KeepY]
+    robust<-TRUE
+    X<-X[!is.na(weights), ,drop=FALSE]
+    Y<-Y[!is.na(weights)]
+    weights<-weights[!is.na(weights)]
+    weighted<-TRUE
+    weights<-weights*length(weights)/sum(weights)
+  } else {
+    weights<-rep_len(1,length(Y))
+    weighted<-FALSE
+  }
+  NoVarModData<-data.frame(Y,weights)
+  
+  No.Obs<-length(Y)
+  # calculate log-likelihood if probabilities are derived from proportions in sample
+  # used for calculation of McFadden's R^2
+  # BaselineLL<-.BaseLL(Y,weights)
+  termsMODEL<-list(termsMEAN)
+  formulaMODEL<-list(formula)
+  # If specified that there is no constant in the model remove it from the data frame.
+  savecolnames<-colnames(X)[colnames(X)!="(Intercept)"]
+  X<-X[,colnames(X)!="(Intercept)",drop=FALSE]
+  colnames(X)<-savecolnames
+  # collect variable means and check which variables are binary.
+  XVarMeans<-apply(X,2,mean)
+  XVarBinary<-apply(X,2,.checkbinary)
+  
+  Z<-as.matrix(rep(1,nrow(X)),ncol=1)
+  ZVarMeans<-NULL
+  ZVarBinary<-NULL
+  Heteroskedastic<-FALSE
+  
+  BothMeanVar=NULL
+  checkoutcomes<-.checkoutcomes(Y,Force=Force)
+  listoutcomes<-checkoutcomes[[1]]
+  no.outcomes<-checkoutcomes[[2]]
+  
+  output<-oglmx.fit(Y,X,Z,w=weights,link = "probit",beta=beta,delta=0,threshparam=threshparam,analhessian=analhessian,robustmatrix=robust,start=start)
+  output<-append(output,list(call=call,terms=termsMODEL,formula=formulaMODEL,NoVarModData=NoVarModData,Hetero=Heteroskedastic,BothEq=BothMeanVar,varMeans=list(XVarMeans,ZVarMeans),varBinary=list(XVarBinary,ZVarBinary)))
+  class(output)<-"oglmx"
+  output
+}
+
+ologit.reg<-function(formula,data,start=NULL,weights=NULL,beta=NULL,threshparam=NULL,analhessian=TRUE,na.action,savemodelframe=FALSE,robust=FALSE,Force=FALSE){
+  call<-match.call()
+  m<-match(c("formula","data","subset","weights", "na.action", "offset"),names(call),0)
+  mf<-call[c(1L,m)]
+  mf$drop.unused.levels <- TRUE
+  mf[[1L]]<- quote(stats::model.frame)  
+  mf<-eval(mf,parent.frame())
+  weights<-as.vector(model.weights(mf))
+  termsMEAN<-terms(mf)
+  X<-model.matrix(formula,mf)
+  Y<-model.response(mf,"numeric")
+  KeepY<-!is.na(Y)
+  KeepX<-!apply(X,1,.IsNARow)
+  if (!is.null(weights)){
+    weights<-weights[KeepX & KeepY]
+    robust<-TRUE
+    X<-X[!is.na(weights), ,drop=FALSE]
+    Y<-Y[!is.na(weights)]
+    weights<-weights[!is.na(weights)]
+    weighted<-TRUE
+    weights<-weights*length(weights)/sum(weights)
+  } else {
+    weights<-rep_len(1,length(Y))
+    weighted<-FALSE
+  }
+  NoVarModData<-data.frame(Y,weights)
+  
+  No.Obs<-length(Y)
+  # calculate log-likelihood if probabilities are derived from proportions in sample
+  # used for calculation of McFadden's R^2
+  # BaselineLL<-.BaseLL(Y,weights)
+  termsMODEL<-list(termsMEAN)
+  formulaMODEL<-list(formula)
+  # If specified that there is no constant in the model remove it from the data frame.
+  savecolnames<-colnames(X)[colnames(X)!="(Intercept)"]
+  X<-X[,colnames(X)!="(Intercept)",drop=FALSE]
+  colnames(X)<-savecolnames
+  # collect variable means and check which variables are binary.
+  XVarMeans<-apply(X,2,mean)
+  XVarBinary<-apply(X,2,.checkbinary)
+  
+  Z<-as.matrix(rep(1,nrow(X)),ncol=1)
+  ZVarMeans<-NULL
+  ZVarBinary<-NULL
+  Heteroskedastic<-FALSE
+  
+  BothMeanVar=NULL
+  checkoutcomes<-.checkoutcomes(Y,Force=Force)
+  listoutcomes<-checkoutcomes[[1]]
+  no.outcomes<-checkoutcomes[[2]]
+  
+  output<-oglmx.fit(Y,X,Z,w=weights,link = "logit",beta=beta,delta=0,threshparam=threshparam,analhessian=analhessian,robustmatrix=robust,start=start)
+  output<-append(output,list(call=call,terms=termsMODEL,formula=formulaMODEL,NoVarModData=NoVarModData,Hetero=Heteroskedastic,BothEq=BothMeanVar,varMeans=list(XVarMeans,ZVarMeans),varBinary=list(XVarBinary,ZVarBinary)))
+  class(output)<-"oglmx"
+  output
+}
+
+.checkoutcomes<-function(outcomevector,Force=FALSE,binary=FALSE){
+  listoutcomes<-as.numeric(levels(as.factor(outcomevector)))[order(as.numeric(levels(as.factor(outcomevector))))]
+  no.outcomes<-length(listoutcomes)
+  if (no.outcomes>20 & Force==FALSE){
+    stop("More than 20 different values for outcome variable.\n If you are sure you wish to estimate this model rerun command with Force option set to TRUE.")
+  }
+  if (binary & no.outcomes>2){
+    stop("More than 2 values for outcome variable. Try ologit or oprobit as appropriate.")
+  }
+  output<-list(listoutcomes=listoutcomes,no.outcomes=no.outcomes)
+}
+
+.cdf.func<-function(link){
+  if (link=="probit"){
+    value <- function(p){pnorm(p)}
+  } else if (link=="logit"){
+    value <- function(p){plogis(p)}
+  } else if (link=="cauchit"){
+    value <- function(p){pcauchy(p)}
+  } else if (link=="loglog"){
+    value <-function(p){exp(-exp(-p))}
+  } else if (link=="cloglog"){
+    value <- function(p){1-exp(-exp(p))}
+  } else {
+    stop("Specified link not available.")
+  }
+  value
+}
+
+.pdf.func<-function(link){
+  if (link=="probit"){
+    value <- function(p){dnorm(p)}
+  } else if (link=="logit"){
+    value <- function(p){dlogis(p)}
+  } else if (link=="cauchit"){
+    value <- function(p){dcauchy(p)}
+  } else if (link=="loglog"){
+    value <-function(p){exp(-exp(-p))*exp(-p)}
+  } else if (link=="cloglog"){
+    value <- function(p){exp(-exp(p))*exp(p)}
+  } else {
+    stop("Specified link not available.")
+  }
+  value
+}
+
+.Dpdf.func<-function(link){
+  if (link=="probit"){
+    value <- function(p){-p*dnorm(p)}
+  } else if (link=="logit"){
+    value <- function(p){dlogis(p)*(1-2*plogis(p))}
+  } else if (link=="cauchit"){
+    value <- function(p){-2*p*dcauchy(p)/(1+p^2)}
+  } else if (link=="loglog"){
+    value <-function(p){exp(-exp(-p))*(exp(-p)*(exp(-p)-1))}
+  } else if (link=="cloglog"){
+    value <- function(p){exp(-exp(p))*exp(p)*(1-exp(p))}
+  } else {
+    stop("Specified link not available.")
+  }
+  value
+}
+
+.DDpdf.func<-function(link){
+  if (link=="probit"){
+    value <- function(p){(p^2-1)*dnorm(p)}
+  } else if (link=="logit"){
+    value <- function(p){dlogis(p)*(1-2*plogis(p))^2-2*dlogis(p)^2}
+  } else if (link=="cauchit"){
+    value <- function(p){(dcauchy(p)/(p^2+1)^4)*(6*p^4+8*p^2-2)}
+  } else if (link=="loglog"){
+    value <- function(p){exp(-exp(-p))*(exp(-3*p)-3*exp(-2*p)+exp(-p))}
+  } else if (link=="cloglog"){
+    value <- function(p){exp(-exp(p))*(exp(3*p)-3*exp(2*p)+exp(p))}
+  } else {
+    stop("Specified link not available.")
+  }
+  value
+}
+
+# function to check if there is an NA in the row
+.IsNARow<-function(x){
+  if (sum(is.na(x))>0){
+    return(TRUE)
+  } else {
+    return(FALSE)
+  }
+}
+
+.checkbinary<-function(x){
+  if (sum(x==0)+sum(x==1)==length(x) & sum(x==0)>0 & sum(x==1)>0){
+    return(TRUE)
+  } else {
+    return(FALSE)
+  }
+}
+
+.paircombn<-function(vec1,vec2=NULL,same=TRUE){
+  result1<-vector("numeric",0)
+  result2<-vector("numeric",0)
+  if (same){
+    for (i in 1:length(vec1)){
+      result1<-c(result1,rep(vec1[i],length(vec1)+1-i))
+      result2<-c(result2,vec1[i:length(vec1)])           
+    }
+  } else {
+    if (is.null(vec2)){stop("If pairs are not drawn from the same list argument vec2 should be specified.")}
+    for (i in 1:length(vec1)){
+      result1<-c(result1,rep(vec1[i],length(vec2)))
+      result2<-c(result2,vec2)
+    }
+  }
+  lapply(1:length(result1),function(x){c(result1[x],result2[x])})
+}
+
+.regtype.oglmx<-function(object){
+  if (sum(object$NoVarModData$weights==1)!=nrow(object$NoVarModData)){
+    Zero<-"Weighted "
+  } else {
+    Zero<-""
+  }
+  if (object$Hetero){
+    First<-"Heteroskedastic "
+  } else {
+    First<-""
+  }  
+  if (object$NOutcomes>2){
+    Second<-"Ordered "
+  } else {
+    Second<-""
+  } 
+  if (object$link=="logit"){
+    Third<-"Logit "
+  } else if (object$link=="probit"){
+    Third<-"Probit "
+  } else if (object$link=="cloglog"){
+    Third<-"CLogLog "
+  } else if (object$link=="loglog"){
+    Third<-"LogLog "
+  } else if (object$link=="cauchit"){
+    Third<-"Cauchit "
+  }
+  Fourth<-"Regression"
+  value<-paste(Zero,First,Second,Third,Fourth,sep="")
+  return(value)
+}
+
+nobs.oglmx<-function(object, ...){
+  return(attr(object$loglikelihood,"No.Obs"))
+}
+
+logLik.oglmx<-function(object, ...){
+  value<-object$loglikelihood[1]
+  attr(value,"df")<-length(object$coefficients)
+  return(value)
+}
+
+.BaseLL<-function(object){
+  BaseLL<-as.numeric(logLik(oglmx(object$NoVarModData$Y~1,data=object$NoVarModData,weights=object$NoVarModData$weights)))
+  return(BaseLL)
 }
 
 vcov.oglmx<-function(object,tol=1e-20,...){
@@ -751,26 +1099,6 @@ print.summary.oglmx<-function(x, ... ){
   }
 }
 
-.BaseLL<-function(object){
-  #outcome<-peersimdata$score
-  #weight<-(1/peersimdata$rankprob)*5760/sum((1/peersimdata$rankprob))
-  #values<-as.numeric(levels(as.factor(outcome)))
-  #countoutcomes<-vector("numeric",0)
-  #for (i in 1:length(values)){
-  #  countoutcomes[i]<-sum(as.numeric(outcome)==values[i])
-  #}
-  #if (sum(weight == rep_len(1,length(outcome)))==length(outcome)){
-  #  BaseLL<-sum(countoutcomes*log(countoutcomes/length(outcome)))
-  #} else {
-  #  BaseLL<-0
-  #  for (i in 1:length(values)){
-  #    BaseLL<-BaseLL+sum(weight[as.numeric(outcome)==values[i]]*log(countoutcomes[i]/length(outcome)))
-  #  }
-  #}
- BaseLL<-as.numeric(logLik(oglmx(object$NoVarModData$Y~1,data=object$NoVarModData,weights=object$NoVarModData$weights)))
- return(BaseLL)
-}
-
 McFaddensR2.oglmx<-function(object){
   value<-1-logLik(object)/.BaseLL(object)
   return(value)
@@ -782,14 +1110,8 @@ AIC.oglmx<-function(object, ..., k=2){
   return(value)
 }
 
-logLik.oglmx<-function(object, ...){
-  value<-object$loglikelihood[1]
-  attr(value,"df")<-length(object$coefficients)
-  return(value)
-}
-
 logLik.summary.oglmx<-function(object, ...){
-  object$loglikelihood[1]
+  value<-object$loglikelihood[1]
   attr(value,"df")<-length(object$coefficients)
   return(value)
 }
@@ -806,10 +1128,6 @@ coef.summary.oglmx<-function(object, ...){
   output<-as.vector(object$coefficients)
   names(output)<-coefnames
   return(output) 
-}
-
-nobs.oglmx<-function(object, ...){
-  return(attr(object$loglikelihood,"No.Obs"))
 }
 
 formula.oglmx<-function(x, ...){
@@ -838,91 +1156,3 @@ formula.oglmx<-function(x, ...){
   }
   return(value)
 }
-
-.regtype.oglmx<-function(object){
-  if (sum(object$NoVarModData$weights==1)!=nrow(object$NoVarModData)){
-    Zero<-"Weighted "
-  } else {
-    Zero<-""
-  }
-  if (object$Hetero){
-    First<-"Heteroskedastic "
-  } else {
-    First<-""
-  }  
-  if (object$NOutcomes>2){
-    Second<-"Ordered "
-  } else {
-    Second<-""
-  } 
-  if (object$link=="logit"){
-    Third<-"Logit "
-  } else if (object$link=="probit"){
-    Third<-"Probit "
-  } else if (object$link=="cloglog"){
-    Third<-"CLogLog "
-  } else if (object$link=="loglog"){
-    Third<-"LogLog "
-  } else if (object$link=="cauchit"){
-    Third<-"Cauchit "
-  }
-  Fourth<-"Regression"
-  value<-paste(Zero,First,Second,Third,Fourth,sep="")
-  return(value)
-}
-
-.paircombn<-function(vec1,vec2=NULL,same=TRUE){
-  result1<-vector("numeric",0)
-  result2<-vector("numeric",0)
-  if (same){
-    for (i in 1:length(vec1)){
-      result1<-c(result1,rep(vec1[i],length(vec1)+1-i))
-      result2<-c(result2,vec1[i:length(vec1)])           
-    }
-  } else {
-    if (is.null(vec2)){stop("If pairs are not drawn from the same list argument vec2 should be specified.")}
-    for (i in 1:length(vec1)){
-      result1<-c(result1,rep(vec1[i],length(vec2)))
-      result2<-c(result2,vec2)
-    }
-  }
-  lapply(1:length(result1),function(x){c(result1[x],result2[x])})
-}
-
-.checkbinary<-function(x){
-  if (sum(x==0)+sum(x==1)==length(x) & sum(x==0)>0 & sum(x==1)>0){
-    return(TRUE)
-  } else {
-    return(FALSE)
-  }
-}
-
-# function to check if there is an NA in the row
-.IsNARow<-function(x){
-  if (sum(is.na(x))>0){
-    return(TRUE)
-  } else {
-    return(FALSE)
-  }
-}
-
-probit.reg<-function(formula,data,start=NULL,weights=NULL,beta=NULL,analhessian=TRUE,na.action=TRUE,savemodelframe=FALSE,robust=FALSE){
-  value<-oglmx(formulaMEAN=formula,data=data,start=start,beta=beta,analhessian=analhessian,na.action=na.action,savemodelframe=savemodelframe,link="probit",constantMEAN=TRUE,constantSD=FALSE,delta=0,threshparam=0)
-  return(value)
-}
-
-oprobit.reg<-function(formula,data,start=NULL,weights=NULL,beta=NULL,analhessian=TRUE,na.action=TRUE,savemodelframe=FALSE,robust=FALSE){
-  value<-oglmx(formulaMEAN=formula,data=data,start=start,beta=beta,analhessian=analhessian,na.action=na.action,savemodelframe=savemodelframe,link="probit",constantMEAN=FALSE,constantSD=FALSE,delta=0,threshparam=NULL,robust=robust)
-  return(value)
-}
-
-ologit.reg<-function(formula,data,start=NULL,weights=NULL,beta=NULL,analhessian=TRUE,na.action=TRUE,savemodelframe=FALSE,robust=FALSE){
-  value<-oglmx(formulaMEAN=formula,data=data,start=start,beta=beta,analhessian=analhessian,na.action=na.action,savemodelframe=savemodelframe,link="logit",constantMEAN=FALSE,constantSD=FALSE,delta=0,threshparam=NULL,robust=FALSE)
-  return(value)
-}
-
-logit.reg<-function(formula,data,start=NULL,weights=NULL,beta=NULL,analhessian=TRUE,na.action=TRUE,savemodelframe=FALSE,robust=FALSE){
-  value<-oglmx(formulaMEAN=formula,data=data,start=start,beta=beta,analhessian=analhessian,na.action=na.action,savemodelframe=savemodelframe,link="logit",constantMEAN=TRUE,constantSD=FALSE,delta=0,threshparam=0,robust=FALSE)
-  return(value)
-}
-

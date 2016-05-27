@@ -19,31 +19,10 @@ margins.oglmx<-function(object,Vars=NULL,outcomes="All",atmeans=TRUE,AME=FALSE,a
   nameoutcomes<-object$Outcomes[match(outcomes,object$Outcomes)]
   
   link<-object$link
-  if (link=="logit"){
-    ProbFunc<-function(p){plogis(p)}
-    ProbFuncD<-function(p){dlogis(p)}
-    ProbFuncDD<-function(p){dlogis(p)*(1-2*plogis(p))}
-  }
-  if (link=="probit"){
-    ProbFunc<-function(p){pnorm(p)}
-    ProbFuncD<-function(p){dnorm(p)}
-    ProbFuncDD<-function(p){-p*dnorm(p)}
-  }
-  if (link=="cauchit"){
-    ProbFunc<-function(p){pcauchy(p)}
-    ProbFuncD<-function(p){dcauchy(p)}
-    ProbFuncDD<-function(p){-2*p*dcauchy(p)/(1+p^2)}
-  }
-  if (link=="loglog"){
-    ProbFunc<-function(p){exp(-exp(-p))}
-    ProbFuncD<-function(p){exp(-(exp(-p)+p))}
-    ProbFuncDD<-function(p){exp(-(exp(-p)+p))*(1+exp(-p))}
-  }
-  if (link=="cloglog"){
-    ProbFunc<-function(p){1-exp(-exp(p))}
-    ProbFuncD<-function(p){exp(p-exp(p))}
-    ProbFuncDD<-function(p){exp(p-exp(p))*(1-exp(p))}
-  }
+  
+  ProbFunc<-.cdf.func(link)
+  ProbFuncD<-.pdf.func(link)
+  ProbFuncDD<-.Dpdf.func(link)
   
   sdmodfirstderiv<-D(object$sdmodel,"z")
   sdmodsecondderiv<-D(sdmodfirstderiv,"z")

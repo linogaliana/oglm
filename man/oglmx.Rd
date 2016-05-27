@@ -3,6 +3,7 @@
 \alias{nobs.oglmx}
 \alias{coef.oglmx}
 \alias{coef.summary.oglmx}
+\alias{oglmx.fit}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Fit Ordered Generalized Linear Model.
@@ -15,8 +16,12 @@ Fit Ordered Generalized Linear Model.
 oglmx(formulaMEAN, formulaSD = NULL, data, start = NULL, weights = NULL, 
       link = "probit", constantMEAN = TRUE, constantSD = TRUE, beta = NULL,
       delta = NULL, threshparam = NULL, analhessian = TRUE, 
-      sdmodel = expression(exp(z)), SameModelMEANSD = FALSE, na.action = TRUE,
+      sdmodel = expression(exp(z)), SameModelMEANSD = FALSE, na.action,
       savemodelframe = FALSE, Force = FALSE, robust = FALSE)
+      
+oglmx.fit(Y, X, Z = NULL, w, link = "probit", sdmodel = expression(exp(z)),
+          SameModelMEANSD = FALSE, beta = NULL, delta = NULL, threshparam = NULL,
+          analhessian = TRUE, robustmatrix = FALSE, start = NULL, savemodelframe = FALSE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -60,7 +65,7 @@ oglmx(formulaMEAN, formulaSD = NULL, data, start = NULL, weights = NULL,
 %%     ~~Describe \code{delta} here~~
 }
   \item{threshparam}{
-  numeric vector. Used to prespecify the threshold parameters of the model. Vector should be of length equal to the number of outcomes minus one. \code{NA} should be entered for threshold parameters to be estimated by the model.
+  \code{NULL} or numeric vector. Used to prespecify the threshold parameters of the model. Vector should be of length equal to the number of outcomes minus one. \code{NA} should be entered for threshold parameters to be estimated by the model.
 %%     ~~Describe \code{threshparam} here~~
 }
   \item{analhessian}{
@@ -75,8 +80,8 @@ oglmx(formulaMEAN, formulaSD = NULL, data, start = NULL, weights = NULL,
   logical. Indicates whether the matrix used to model the mean of the latent variable is identical to that used to model the variance. If \code{formulaSD=NULL} and \code{SameModelMEANSD=TRUE} a model with heteroskedasticity is estimated. If \code{SameModelMEANSD=FALSE} and \code{formulaSD==formulaMEAN} value is overridden. Used to reduce memory requirements when models are identical. 
 %%     ~~Describe \code{SameModelMEANSD} here~~
 }
-  \item{na.action}{
-  Currently not a functioning argument.
+ \item{na.action}{
+  a function which indicates what should happen when the data contain NAs. The default is set by the \code{na.action} setting of \code{\link{options}}, and is \code{\link{na.fail}} if that is unset. The factory-fresh default is \code{\link{na.omit}}. Another possible value is \code{NULL}, no action. Value \code{\link{na.exclude}} can be useful.
 %%     ~~Describe \code{na.action} here~~
 }
   \item{savemodelframe}{
@@ -87,8 +92,14 @@ oglmx(formulaMEAN, formulaSD = NULL, data, start = NULL, weights = NULL,
   logical. If set to \code{FALSE} (the default) the function stops if the response variable has more than twenty categories. Should be changed to \code{TRUE} if a model with more than twenty categories is desired.
 %%     ~~Describe \code{Force} here~~
 }
-  \item{robust}{
+  \item{robust, robustmatrix}{
   logical. If set to \code{TRUE} the outer product or BHHH estimate of the meat in the sandwich of the variance-covariance matrix is calculated. If calculated standard errors will be calculated using the sandwich estimator by default when calling \code{summary}.
+  }
+  \item{Y, X, Z}{
+  \code{X} is a data matrix for the right hand side of the mean equation, \code{Y} is a numerical vector containing the outcome variable and \code{Z} is a data matrix for the variance equation.
+  }
+  \item{w}{
+  \code{w} specifies a vector of weights for the \code{oglmx.fit} function.  
   }
 }
 %\details{

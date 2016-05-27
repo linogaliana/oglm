@@ -10,8 +10,9 @@
 %%  ~~ A concise (1-5 lines) description of what the function does. ~~
 }
 \usage{
-oprobit.reg(formula, data, start = NULL, weights=NULL, beta = NULL, 
-            analhessian = TRUE, na.action = TRUE, savemodelframe = FALSE, robust = FALSE)
+oprobit.reg(formula, data, start = NULL, weights=NULL, beta = NULL, threshparam = NULL,
+            analhessian = TRUE, na.action, savemodelframe = FALSE, robust = FALSE,
+            Force = FALSE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -34,12 +35,16 @@ oprobit.reg(formula, data, start = NULL, weights=NULL, beta = NULL,
   \code{NULL} or numeric vector. Used to prespecify elements of the parameter vector for the equation of the mean of the latent variable. Vector should be of length one or of length equal to the number of explanatory variables in the mean equation. If of length one the value is presumed to correspond to the first element of the parameter vector. If of length greater than one then \code{NA} should be entered for elements of the vector to be estimated.
 %%     ~~Describe \code{beta} here~~
 }
+  \item{threshparam}{
+  \code{NULL} or numeric vector. Used to prespecify the threshold parameters of the model. Vector should be of length equal to the number of outcomes minus one. \code{NA} should be entered for threshold parameters to be estimated by the model.
+%%     ~~Describe \code{threshparam} here~~
+}
   \item{analhessian}{
   logical. Indicates whether the analytic Hessian should be calculated and used, default is TRUE, if set to FALSE a finite-difference approximation of the Hessian is used.
 %%     ~~Describe \code{analhessian} here~~
 }
  \item{na.action}{
-  Currently not a functioning argument.
+  a function which indicates what should happen when the data contain NAs. The default is set by the \code{na.action} setting of \code{\link{options}}, and is \code{\link{na.fail}} if that is unset. The factory-fresh default is \code{\link{na.omit}}. Another possible value is \code{NULL}, no action. Value \code{\link{na.exclude}} can be useful.
 %%     ~~Describe \code{na.action} here~~
 }
   \item{savemodelframe}{
@@ -49,6 +54,10 @@ oprobit.reg(formula, data, start = NULL, weights=NULL, beta = NULL,
 \item{robust}{
   logical. If set to \code{TRUE} the outer product or BHHH estimate of the meat in the sandwich of the variance-covariance matrix is calculated. If calculated standard errors will be calculated using the sandwich estimator by default when calling \code{summary}.
   }
+  \item{Force}{
+  logical. If set to \code{FALSE} (the default) the function stops if the response variable has more than twenty categories. Should be changed to \code{TRUE} if a model with more than twenty categories is desired.
+%%     ~~Describe \code{Force} here~~
+}
 }
 %\details{
 %%  ~~ If necessary, more details than the description above ~~

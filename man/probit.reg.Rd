@@ -10,7 +10,7 @@ Fit Probit Model.
 }
 \usage{
 probit.reg(formula, data, start = NULL, weights=NULL, beta = NULL,
-           analhessian = TRUE, na.action = TRUE, savemodelframe = FALSE, robust = FALSE)
+           analhessian = TRUE, na.action, savemodelframe = FALSE, robust = FALSE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -36,7 +36,7 @@ probit.reg(formula, data, start = NULL, weights=NULL, beta = NULL,
 %%     ~~Describe \code{analhessian} here~~
 }
   \item{na.action}{
-  Currently not a functioning argument.
+  a function which indicates what should happen when the data contain NAs. The default is set by the \code{na.action} setting of \code{\link{options}}, and is \code{\link{na.fail}} if that is unset. The factory-fresh default is \code{\link{na.omit}}. Another possible value is \code{NULL}, no action. Value \code{\link{na.exclude}} can be useful.
 %%     ~~Describe \code{na.action} here~~
 }
   \item{savemodelframe}{
