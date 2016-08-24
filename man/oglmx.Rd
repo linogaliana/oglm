@@ -49,11 +49,11 @@ oglmx.fit(Y, X, Z = NULL, w, link = "probit", sdmodel = expression(exp(z)),
 %%     ~~Describe \code{link} here~~
 }
   \item{constantMEAN}{
-  logical. Should an intercept be included in the model of the mean of the latent variable?
+  logical. Should an intercept be included in the model of the mean of the latent variable? Can be overwritten and set to \code{FALSE} using the formulaMEAN argument by writing \code{0 + } as the first element of the equation.
 %%     ~~Describe \code{constantMEAN} here~~
 }
   \item{constantSD}{
-  logical. Should an intercept be included in the model of the variance of the latent variable?
+  logical. Should an intercept be included in the model of the variance of the latent variable? Can be overwritten and set to \code{FALSE} using the formulaSD argument by writing \code{0 + } as the first element of the equation.
 %%     ~~Describe \code{constantSD} here~~
 }
   \item{beta}{

@@ -574,6 +574,12 @@ oglmx<-function(formulaMEAN,formulaSD=NULL,data,start=NULL,weights=NULL,link="pr
     Z<-Z[KeepX & KeepZ & KeepY, ,drop=FALSE]
     Y<-Y[KeepX & KeepZ & KeepY]
     termsSD<-terms(dataframeSD)
+    # If specified that there is no constant in the model remove it from the data frame.
+    if (!constantSD & ncol(Z)>1){
+      savecolnamesZ<-colnames(Z)[colnames(Z)!="(Intercept)"]
+      Z<-Z[,colnames(Z)!="(Intercept)",drop=FALSE]
+      colnames(Z)<-savecolnamesZ
+    }
   } else {
     KeepZ<-!vector("logical",nrow(X))
     X<-X[KeepX & KeepY, ,drop=FALSE]
@@ -606,6 +612,7 @@ oglmx<-function(formulaMEAN,formulaSD=NULL,data,start=NULL,weights=NULL,link="pr
     X<-X[,colnames(X)!="(Intercept)",drop=FALSE]
     colnames(X)<-savecolnames
   }
+  
   # collect variable means and check which variables are binary.
   XVarMeans<-apply(X,2,mean)
   XVarBinary<-apply(X,2,.checkbinary)  
