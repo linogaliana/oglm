@@ -4,6 +4,7 @@ oglmx.fit<-function(Y,X,Z=NULL,w,link="probit",sdmodel=expression(exp(z)),SameMo
   No.Obs<-length(Y)
   listoutcomes<- as.numeric(levels(as.factor(Y)))[order(as.numeric(levels(as.factor(Y))))]
   weightsr<-split(w,Y,drop=FALSE)
+  
   if (is.null(Z) & SameModelMEANSD){
     Zr<-Xr
   } else if (is.null(Z) & !SameModelMEANSD){
@@ -91,9 +92,26 @@ oglmx.fit<-function(Y,X,Z=NULL,w,link="probit",sdmodel=expression(exp(z)),SameMo
     # more complicated for threshparam, should respect the order of the prespecified values
     if (no.threshparams>0){
       cutoff<-1
+      savethreshparam<-threshparam
       for (i in 1:length(threshparam)){
         if (collectthreshparam[i]){
-          start[no.betaparams+no.deltaparams+cutoff]<-(listoutcomes[i]+listoutcomes[i+1])/2
+          if (i==1){
+            if (length(threshparam)>1){
+              if (!all(collectthreshparam[2:length(threshparam)])){
+                start[no.betaparams+no.deltaparams+cutoff]<-min(savethreshparam[2:length(threshparam)],na.rm = TRUE)-1
+              } else {
+                start[no.betaparams+no.deltaparams+cutoff]<-(listoutcomes[i]+listoutcomes[i+1])/2
+              }
+            } else {start[no.betaparams+no.deltaparams+cutoff]<-(listoutcomes[i]+listoutcomes[i+1])/2}
+          } else {
+            if (i<length(threshparam)){
+              if (!all(collectthreshparam[(i+1):length(threshparam)])){
+                right<-min(savethreshparam[(i+1):length(threshparam)],na.rm = TRUE)
+                start[no.betaparams+no.deltaparams+cutoff]<-(savethreshparam[i-1]+right)/2
+              } else {start[no.betaparams+no.deltaparams+cutoff]<-savethreshparam[i-1]+0.5}
+            } else {start[no.betaparams+no.deltaparams+cutoff]<-savethreshparam[i-1]+0.5}
+          }
+          savethreshparam[i]<-start[no.betaparams+no.deltaparams+cutoff]
           cutoff<-cutoff+1
         } 
       }
@@ -132,6 +150,7 @@ oglmx.fit<-function(Y,X,Z=NULL,w,link="probit",sdmodel=expression(exp(z)),SameMo
   } else {
     modelframes<-NULL
   }
+  
   
   # function that calculates log likelihood, gradient and hessian given a set of parameter values
   LLoglmx<-function(param,beta=NULL,delta=NULL,threshparam=NULL,analhessian=FALSE,robustmatrix=FALSE){
@@ -508,7 +527,7 @@ oglmx.fit<-function(Y,X,Z=NULL,w,link="probit",sdmodel=expression(exp(z)),SameMo
   # call maxLik to estimate parameters
   maxLikRes<-maxLik(LLoglmxTOP,start=start,iterlim=300,finalHessian=TRUE,method="NR")
   # just remains to extract results and store.
-  
+  #stop("getshere")
   coefficients<-maxLikRes$estimate
   if (robustmatrix){
     LLoutput<-LLoglmx(coefficients,beta=beta,delta=delta,threshparam=threshparam,analhessian=analhessian,robustmatrix = TRUE)
@@ -564,15 +583,12 @@ oglmx<-function(formulaMEAN,formulaSD=NULL,data,start=NULL,weights=NULL,link="pr
   termsMEAN<-terms(mf)
   X<-model.matrix(formulaMEAN,mf)
   Y<-model.response(mf,"numeric")
-  KeepY<-!is.na(Y)
-  KeepX<-!apply(X,1,.IsNARow)
+  Keep<-!is.na(Y) & !apply(X,1,.IsNARow)
   if (!is.null(formulaSD) & !SameModelMEANSD){
     dataframeSD<-model.frame(formulaSD,data=data,na.action=na.pass)
     Z<-model.matrix(formulaSD,dataframeSD)
-    KeepZ<-!apply(Z,1,.IsNARow)
-    X<-X[KeepX & KeepZ & KeepY, ,drop=FALSE]
-    Z<-Z[KeepX & KeepZ & KeepY, ,drop=FALSE]
-    Y<-Y[KeepX & KeepZ & KeepY]
+    Keep<-Keep & !apply(Z,1,.IsNARow)
+    Z<-Z[Keep, ,drop=FALSE]
     termsSD<-terms(dataframeSD)
     # If specified that there is no constant in the model remove it from the data frame.
     if (!constantSD & ncol(Z)>1){
@@ -581,18 +597,17 @@ oglmx<-function(formulaMEAN,formulaSD=NULL,data,start=NULL,weights=NULL,link="pr
       colnames(Z)<-savecolnamesZ
     }
   } else {
-    KeepZ<-!vector("logical",nrow(X))
-    X<-X[KeepX & KeepY, ,drop=FALSE]
-    Y<-Y[KeepX & KeepY]
     termsSD<-NULL
   }
+  X<-X[Keep, ,drop=FALSE]
+  Y<-Y[Keep]
   if (!is.null(weights)){
-    weights<-weights[KeepX & KeepY & KeepZ]
+    weights<-weights[Keep]
     robust<-TRUE
     X<-X[!is.na(weights), ,drop=FALSE]
     Y<-Y[!is.na(weights)]
     if (!is.null(formulaSD) & !SameModelMEANSD){
-      Z<-Z[!is.na(weights)]
+      Z<-Z[!is.na(weights), ,drop=FALSE]
     }
     weights<-weights[!is.na(weights)]
     weighted<-TRUE
@@ -638,6 +653,7 @@ oglmx<-function(formulaMEAN,formulaSD=NULL,data,start=NULL,weights=NULL,link="pr
     }
   }
   
+  
   if (!is.null(formulaSD) & !SameModelMEANSD){   
     if (!constantSD){Z<-Z[,colnames(Z)!="(Intercept)",drop=FALSE]}
     ZVarMeans<-apply(Z,2,mean)
@@ -664,10 +680,12 @@ oglmx<-function(formulaMEAN,formulaSD=NULL,data,start=NULL,weights=NULL,link="pr
     }
     BothMeanVar=NULL
   }
+  
+  
   checkoutcomes<-.checkoutcomes(Y,Force=Force)
   listoutcomes<-checkoutcomes[[1]]
   no.outcomes<-checkoutcomes[[2]]
-  
+  #return(list(Y,X,X,weights,link,sdmodel,beta,delta,threshparam,analhessian,robust,start))
   output<-oglmx.fit(Y,X,Z,w=weights,link = link,sdmodel = sdmodel,beta=beta,delta=delta,threshparam=threshparam,analhessian=analhessian,robustmatrix=robust,start=start)
   output<-append(output,list(call=call,terms=termsMODEL,formula=formulaMODEL,NoVarModData=NoVarModData,Hetero=Heteroskedastic,BothEq=BothMeanVar,varMeans=list(XVarMeans,ZVarMeans),varBinary=list(XVarBinary,ZVarBinary)))
   class(output)<-"oglmx"
