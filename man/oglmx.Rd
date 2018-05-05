@@ -13,15 +13,14 @@ Fit Ordered Generalized Linear Model.
 %%  ~~ A concise (1-5 lines) description of what the function does. ~~
 }
 \usage{
-oglmx(formulaMEAN, formulaSD = NULL, data, start = NULL, weights = NULL, 
-      link = "probit", constantMEAN = TRUE, constantSD = TRUE, beta = NULL,
-      delta = NULL, threshparam = NULL, analhessian = TRUE, 
-      sdmodel = expression(exp(z)), SameModelMEANSD = FALSE, na.action,
-      savemodelframe = FALSE, Force = FALSE, robust = FALSE)
+oglmx(formulaMEAN, formulaSD=NULL, data, start=NULL, weights=NULL,
+      link="probit", constantMEAN=TRUE, constantSD=TRUE, beta=NULL,
+      delta=NULL, threshparam=NULL, analhessian=TRUE, 
+      sdmodel=expression(exp(z)), SameModelMEANSD=FALSE, na.action,
+      savemodelframe=TRUE, Force=FALSE, robust=FALSE)
       
-oglmx.fit(Y, X, Z = NULL, w, link = "probit", sdmodel = expression(exp(z)),
-          SameModelMEANSD = FALSE, beta = NULL, delta = NULL, threshparam = NULL,
-          analhessian = TRUE, robustmatrix = FALSE, start = NULL, savemodelframe = FALSE)
+oglmx.fit(outcomeMatrix, X, Z, w, beta, delta, threshparam, link, start,
+          sdmodel, optmeth="maxLik", analhessian, robust)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -85,21 +84,24 @@ oglmx.fit(Y, X, Z = NULL, w, link = "probit", sdmodel = expression(exp(z)),
 %%     ~~Describe \code{na.action} here~~
 }
   \item{savemodelframe}{
-  logical. Indicates whether the model frame(s) should be saved for future use. Default is \code{FALSE}. Should be switched to \code{TRUE} if intending to estimate Average Marginal Effects.
+  logical. Indicates whether the model frame(s) should be saved for future use. Default is \code{FALSE}. Should be set to \code{TRUE} if intending to estimate Average Marginal Effects.
 %%     ~~Describe \code{savemodelframe} here~~
 }
   \item{Force}{
   logical. If set to \code{FALSE} (the default) the function stops if the response variable has more than twenty categories. Should be changed to \code{TRUE} if a model with more than twenty categories is desired.
 %%     ~~Describe \code{Force} here~~
 }
-  \item{robust, robustmatrix}{
+  \item{robust}{
   logical. If set to \code{TRUE} the outer product or BHHH estimate of the meat in the sandwich of the variance-covariance matrix is calculated. If calculated standard errors will be calculated using the sandwich estimator by default when calling \code{summary}.
   }
-  \item{Y, X, Z}{
-  \code{X} is a data matrix for the right hand side of the mean equation, \code{Y} is a numerical vector containing the outcome variable and \code{Z} is a data matrix for the variance equation.
+  \item{outcomeMatrix, X, Z}{
+  \code{X} is a data matrix for the right hand side of the mean equation, \code{outcomeMatrix} is a matrix that indicates the outcome variable and \code{Z} is a data matrix for the variance equation.
   }
   \item{w}{
   \code{w} specifies a vector of weights for the \code{oglmx.fit} function.  
+  }
+  \item{optmeth}{
+  \code{optmeth} specifies a method for the maximisation of the likelihood, currently "maxLik" is the only available option.
   }
 }
 %\details{
@@ -107,29 +109,28 @@ oglmx.fit(Y, X, Z = NULL, w, link = "probit", sdmodel = expression(exp(z)),
 %}
 \value{
 An object of class "\code{oglmx}" with the following components:
-\item{loglikelihood }{log-likelihood for the estimated model. Includes as attributes the log-likelihood for the constant only model and the number of observations.}
 \item{link}{link function used in the estimated model.}
-\item{no.iterations}{number of iterations of maximisation algorithm.}
-\item{coefficients}{named vector of estimated parameters.}
-\item{returnCode}{code returned by the \code{maxLik} optimisation routine. For details of meaning see \code{\link{maxNR}}.}
+\item{sdmodel}{Expression for the model for the standard deviation, default is exp(z).}
 \item{call}{the call used to generate the results.}
-\item{gradient}{numeric vector, the value of the gradient of the log-likelihood function at the obtained parameter vector. Should be approximately equal to zero.}
-\item{terms}{two element list. Each element is an object of type \code{terms} related to the mean and standard deviation equation respectively.
-}
-\item{formula}{two element list. Each element is an object of type \code{formula} related to the mean and standard deviation equation respectively.}
+\item{factorvars}{vector listing factor variables included in the model}
+\item{Outcomes}{numeric vector listing the values of the different outcomes.}
 \item{NoVarModData}{dataframe. Contains data required to estimate the no information model used in calculation of McFadden's R-squared measure.}
-\item{hessian}{hessian matrix of the log-likelihood function evaluated at the obtained parameter vector.}
-\item{BHHHhessian}{Either \code{NULL} if no weights were included and \code{robust = FALSE}, or the BHHH estimate.}
-\item{Hetero}{logical. If \code{TRUE} indicates that the estimated model includes a model for the variance of the error term, i.e. heteroskedasticity.}
 \item{NOutcomes}{the number of distinct outcomes in the response variable.}
-\item{Outcomes}{numeric vector of length equal to \code{NOutcomes}. Lists the values of the different outcomes.}
-\item{BothEq}{data.frame with either two or three columns. Lists the names of variables that are in both the mean and variance equations and their locations within their respective model frames. Information is required in the call of \code{margins.oglmx} to obtain correct marginal effects.}
-\item{allparams}{a list containing three numeric vectors, the vectors contain the parameters from the mean equation, the variance equation and the threshold parameters respectively. Includes the prespecified and estimated parameters together.}
+\item{Hetero}{logical. If \code{TRUE} indicates that the estimated model includes a model for the variance of the error term, i.e. heteroskedasticity.}
+\item{formula}{two element list. Each element is an object of type \code{formula} related to the mean and standard deviation equation respectively.}
+\item{modelframes}{If \code{savemodelframe} set to \code{FALSE} then returns \code{NULL}, otherwise returns a list with two elements, the model frames for the mean and variance equations.}
+\item{BothEq}{Omitted in the case of a homoskedastic model. Dataframe listing variables that are contained in both the mean and variance equations.}
 \item{varMeans}{a list containing two numeric vectors. The vectors list the mean values of the variables in the mean and variance equation respectively. Stored for use in a call of \code{margins.oglmx} to obtain marginal effects at means.}
 \item{varBinary}{a list containing two numeric vectors. The vectors indicate whether the variables in the mean and variance equations are binary indicators. Stored for use in a call of \code{margins.oglmx} to obtain marginal effects at means.}
+\item{loglikelihood }{log-likelihood for the estimated model. Includes as attributes the log-likelihood for the constant only model and the number of observations.}
+\item{coefficients}{vector of estimated parameters.}
+\item{gradient}{numeric vector, the value of the gradient of the log-likelihood function at the obtained parameter vector. Should be approximately equal to zero.}
+\item{no.iterations}{number of iterations of maximisation algorithm.}
+\item{returnCode}{code returned by the \code{maxLik} optimisation routine. For details of meaning see \code{\link{maxNR}}.}
+\item{hessian}{hessian matrix of the log-likelihood function evaluated at the obtained parameter vector.}
+\item{allparams}{a list containing three numeric vectors, the vectors contain the parameters from the mean equation, the variance equation and the threshold parameters respectively. Includes the prespecified and estimated parameters together.}
 \item{Est.Parameters}{list containing three logical vectors. Indicates which parameters in the parameter vectors were estimated.}
-\item{modelframes}{If \code{savemodelframe} set to \code{FALSE} then returns \code{NULL}, otherwise returns a list with two elements, the model frames for the mean and variance equations.}
-
+\item{BHHHhessian}{Omitted if \code{robust = FALSE} and weights were not included. The BHHH variance-covariance estimate.}
 
 %%  ~Describe the value returned
 %%  If it is a LIST, use

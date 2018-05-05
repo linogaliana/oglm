@@ -12,8 +12,8 @@ This function constructs marginal effects and calculates standard errors for all
 %%  ~~ A concise (1-5 lines) description of what the function does. ~~
 }
 \usage{
-margins.oglmx(object, Vars = NULL, outcomes = "All", atmeans = TRUE, AME = FALSE,
-              ascontinuous = FALSE, dummyzero = FALSE, location = NULL)
+margins.oglmx(object, atmeans = TRUE, AME = FALSE, location = NULL, outcomes = "All",
+              ascontinuous = FALSE, Vars = NULL)
 
 \method{print}{margins.oglmx}(x, ... )
 }
@@ -24,7 +24,7 @@ margins.oglmx(object, Vars = NULL, outcomes = "All", atmeans = TRUE, AME = FALSE
 %%     ~~Describe \code{object} here~~
 }
   \item{Vars}{
-    vector specifying variables for which marginal effects are desired. Currently ignored.
+    vector specifying variables for which marginal effects are desired.
 %%     ~~Describe \code{Vars} here~~
 }
   \item{outcomes}{
@@ -43,12 +43,12 @@ margins.oglmx(object, Vars = NULL, outcomes = "All", atmeans = TRUE, AME = FALSE
   logical. If \code{TRUE} binary variables are treated as if continuous to calculate marginal effects.
 %%     ~~Describe \code{ascontinuous} here~~
 }
-  \item{dummyzero}{
-  logical. If \code{atmeans=TRUE} and \code{dummyzero=TRUE} marginal effects are calculated with continuous variables at their means and binary variables set to zero.
+%  \item{dummyzero}{
+%  logical. If \code{atmeans=TRUE} and \code{dummyzero=TRUE} marginal effects are calculated with continuous variables at their means and binary variables set to zero.
 %%     ~~Describe \code{dummyzero} here~~
-}
+%}
   \item{location}{
-  \code{NULL} or numeric vector. Allows the user to specify the values of the explanatory variables at which the marginal effect is to be calculated. Currently only functional for the mean equation.
+  \code{NULL}, a numeric vector, or a list containing two numeric vectors. Allows the user to specify the values of the explanatory variables at which the marginal effect is to be calculated. For a homoskedastic model the input should be a numeric vector of length equal to the number of variables in the model matrix. For a heterskedastic model the input should be a list, the first element should be a vector of length equal to the number of variables in the mean equation and the second is a vector of length equal to the number of variables in the variance equation.
 %%     ~~Describe \code{location} here~~
 }
   \item{\dots}{

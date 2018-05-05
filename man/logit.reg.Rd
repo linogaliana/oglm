@@ -41,7 +41,7 @@ logit.reg(formula, data, start = NULL, weights=NULL, beta = NULL,
 %%     ~~Describe \code{na.action} here~~
 }
   \item{savemodelframe}{
-  logical. Indicates whether the model frame(s) should be saved for future use. Default is \code{FALSE}. Should be switched to \code{TRUE} if intending to estimate Average Marginal Effects.
+  logical. Indicates whether the model frame(s) should be saved for future use. Default is \code{FALSE}. Should be set to \code{TRUE} if intending to estimate Average Marginal Effects.
 %%     ~~Describe \code{savemodelframe} here~~
 }
 \item{robust}{
