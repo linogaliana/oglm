@@ -219,6 +219,9 @@ oglmx<-function(formulaMEAN, formulaSD=NULL, data, start=NULL, weights=NULL, lin
   oglmxoutput$call<-cl
  # if (!constantMEAN){formulaMEAN<-update(formulaMEAN,~0+.)}
 
+  if (!is.null(formulaMEAN)) formulaMEAN <- as.formula(formulaMEAN)
+  if (!is.null(formulaSD)) formulaSD <- as.formula(formulaSD)
+
   if (!is.null(formulaSD)){
   #  if (!constantSD){formulaSD<-update(formulaSD,~0+.)}
     cl$formulaMEAN<-mergeformulas(formulaMEAN,formulaSD)
