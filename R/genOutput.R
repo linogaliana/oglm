@@ -115,12 +115,6 @@ McFaddensR2.oglmx<-function(object){
   return(value)
 }
 
-# works
-AIC.oglmx<-function(object, ..., k=2){
-  # 2*number of estimated parameters - 2*log likelihood
-  value<-k*length(object$coefficients)-2*logLik(object)
-  return(value)
-}
 
 # works
 logLik.summary.oglmx<-function(object, ...){
