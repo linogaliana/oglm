@@ -1,25 +1,30 @@
-# oglmx
+# oglm
 
 <!-- badges: start -->
+[![Project Status: WIP – Initial development is in progress, but there has not yet been a stable, usable release suitable for the public.](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.org/#wip)
 [![R build status](https://github.com/linogaliana/oglmx/workflows/R-CMD-check/badge.svg)](https://github.com/linogaliana/oglmx/actions)
 <!-- badges: end -->
 
-The goal of oglmx is to ...
+A package to work with interval regression and ordered logit and probit models
+
+:warning: `oglm` is a personal adaptation of `oglmx` :package: available on [CRAN](https://cran.r-project.org/web/packages/oglmx/index.html). Because the
+:package: does not look actively maintened and I needed a few enhancement, I 
+started to work on the source code
 
 ## Installation
 
-You can install the released version of oglmx from [CRAN](https://CRAN.R-project.org) with:
+You can install the github version of `oglm` with:
 
 ``` r
-install.packages("oglmx")
+devtools::install_github("linogaliana/oglm")
 ```
 
-## Example
+## Difference with `oglmx` :package:
 
-This is a basic example which shows you how to solve a common problem:
+This :package: has a few difference with `oglmx` :package: that are listed here:
 
-``` r
-library(oglmx)
-## basic example code
-```
+* The :package: presents some tests and is built using continuous integration (based on `travis`) ! 
+* `predict` method
+* ...
+
 
