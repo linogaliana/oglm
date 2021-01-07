@@ -12,17 +12,7 @@
 
 
 
-# works
-coef.oglmx<-function(object, ...){
-  attr(object$coefficients,"coefftypes")<-NULL
-  return(object$coefficients)
-}
 
-# works
-coef.summary.oglmx<-function(object, ...){
-  attr(object$coefficients,"coefftypes")<-NULL
-  return(object$coefficients)
-}
 
 print.margins.oglmx<-function(x, ... ){
   for (m in 1:length(x)){
