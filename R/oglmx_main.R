@@ -206,7 +206,12 @@
 oglmx<-function(formulaMEAN, formulaSD=NULL, data, start=NULL, weights=NULL, link="probit",
                 constantMEAN=TRUE, constantSD=TRUE, beta=NULL, delta=NULL, threshparam=NULL,
                 analhessian=TRUE, sdmodel=expression(exp(z)), SameModelMEANSD=FALSE, na.action,
-                savemodelframe=TRUE, Force=FALSE, robust=FALSE){
+                savemodelframe=TRUE, Force=FALSE, robust=FALSE,
+                optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM")){
+
+  optmeth <- match.arg(optmeth)
+
+
   cl<-match.call()
   oglmxoutput<-list()
   fitinput<-list()
@@ -337,7 +342,7 @@ oglmx<-function(formulaMEAN, formulaSD=NULL, data, start=NULL, weights=NULL, lin
   oglmxoutput$varBinary<-list(XVarBinary,ZVarBinary)
 
   FitInput<-append(list(outcomeMatrix=outcomeMatrix,X=X,Z=Z,w=weights,beta=beta,delta=delta,threshparam=threshparam,
-                 start=start,optmeth="maxLik"),fitinput)
+                 start=start,optmeth=optmeth),fitinput)
   #return(FitInput)
   results<-append(oglmxoutput,do.call("oglmx.fit",FitInput))
   attr(results$loglikelihood,"No.Obs")<-length(Y)
