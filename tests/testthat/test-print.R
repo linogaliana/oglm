@@ -26,4 +26,61 @@ output <- capture.output(
   print(mod1)
 )
 
-# TO DO!
+# print oglmx objects -------------
+
+blanks <- which(output == "")
+digits = max(3L, getOption("digits") - 3L)
+
+# CALL PART ===============
+
+testthat::expect_equal(
+  capture.output(
+    cat("\nCall:  ", paste(deparse(mod1$call), sep = "\n", collapse = "\n"),
+        "\n\n", sep = "")
+  ),
+  c("",as.character(output[(blanks[1]+1):(blanks[1]+2)]),"")
+)
+
+
+# COEFFICIENT PART ===========
+
+print_coef <- function(x){
+
+  cat("Coefficients")
+
+  if (is.character(co <- x$contrasts))
+    cat("  [contrasts: ", apply(cbind(names(co), co),
+                                1L, paste, collapse = "="), "]")
+  cat(":\n")
+  print.default(format(x$coefficients, digits = digits),
+                print.gap = 2, quote = FALSE)
+
+}
+
+
+testthat::expect_equal(
+  capture.output(
+    print_coef(mod1)
+  ),
+  c(as.character(output[(blanks[2]+1):(blanks[3]-1)]))
+)
+
+
+# PERFORMANCE PART ===============
+
+print_perf <- function(x){
+
+cat("Log likelihood by observation:\t   ",
+    format(signif(x$loglikelihood/attr(x$loglikelihood, "No.Obs"),
+                  digits)),
+    "\nAIC:\t", format(signif(AIC(x), digits)))
+
+
+}
+
+testthat::expect_equal(
+  capture.output(
+    print_perf(mod1)
+  ),
+  c(as.character(output[(blanks[3]+1):length(output)]))
+)
