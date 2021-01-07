@@ -1,4 +1,6 @@
-# working
+#' @export
+
+
 summary.oglmx<-function(object,tol=1e-20, ... ){
   stdEr.oglmx<-diag(vcov(object,tol=tol))^0.5
   t<-object$coefficients/stdEr.oglmx
