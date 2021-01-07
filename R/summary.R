@@ -17,8 +17,8 @@ summary.oglmx<-function(object,tol=1e-20, ... ){
   summary
 }
 
-# working
-print.summary.oglmx<-function(x, ... ){
+#' @export
+print.summary.oglmx <- function(x, ... ){
   cat(x$regtype,"\n")
   cat("Log-Likelihood:", x$loglikelihood, "\n")
   cat("No. Iterations:", x$no.iterations, "\n")
