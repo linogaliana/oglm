@@ -7,9 +7,11 @@
 
 A package to work with interval regression and ordered logit and probit models
 
-:warning: `oglm` is a personal adaptation of `oglmx` :package: available on [CRAN](https://cran.r-project.org/web/packages/oglmx/index.html). Because the
+:warning: `oglm` is a personal adaptation of `oglmx` :package:
+available on
+[CRAN](https://cran.r-project.org/web/packages/oglmx/index.html). Because the
 :package: does not look actively maintened and I needed a few enhancement, I 
-started to work on the source code
+started to work on the source code.
 
 ## Installation
 
@@ -23,7 +25,9 @@ devtools::install_github("linogaliana/oglm")
 
 This :package: has a few difference with `oglmx` :package: that are listed here:
 
-* The :package: presents some tests and is built using continuous integration (based on `travis`) ! 
+* The :package: presents some tests and is tested using standard checks
+in the R community (continuous
+integration is enhanced using `Github Actions`) ! 
 * `predict` method
 * ...
 
