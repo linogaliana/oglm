@@ -1,3 +1,5 @@
+#' @export
+
 logLik.oglmx<-function(object, ...){
   value<-object$loglikelihood[1]
   attr(value,"df")<-length(object$coefficients)
