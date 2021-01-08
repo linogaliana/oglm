@@ -1,7 +1,8 @@
 oglmx.fit<-function(outcomeMatrix,X,Z,w,beta,delta,threshparam,link,start,sdmodel,
                     optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM"),
                     analhessian,robust,
-                    start_method = c("default","search")){
+                    start_method = c("default","search"),
+                    search_iter = 10){
 
   optmeth <- match.arg(optmeth)
   start_method <- match.arg(start_method)
@@ -60,7 +61,7 @@ oglmx.fit<-function(outcomeMatrix,X,Z,w,beta,delta,threshparam,link,start,sdmode
                                            sd = sd(start_algo[start_algo != 0], na.rm = TRUE)) #sd is arbitrary
       return(list("init" = start_algo, "llk" = eval_llk(CalcEnv, start_algo)))
     }
-    draws <- lapply(seq_len(10), function(i){
+    draws <- lapply(seq_len(search_iter), function(i){
       out <- search_loglik(start_algo)
       return(
       list('out' = data.frame(iter = i, llk = out$llk),
@@ -68,7 +69,7 @@ oglmx.fit<-function(outcomeMatrix,X,Z,w,beta,delta,threshparam,link,start,sdmode
       })
     draws_out <- do.call(rbind, lapply(draws, function(x) x$out))
     draws_out <- draws_out[is.finite(draws_out$llk),]
-    idx_max <- draws_out$iter[draws_out$llk == max(draws_out$llk)]
+    idx_max <- draws_out$iter[draws_out$llk == max(draws_out$llk)][1,]
     start_algo <- draws[[idx_max]]$input
     # updateComponents(CalcEnv,start_algo)
     # ll<-loglikelihood.oglmx(inputenv)

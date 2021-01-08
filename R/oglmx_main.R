@@ -199,6 +199,8 @@
 #' margins.oglmx(results.oprobhet2)
 #' # marginal effects are again identical. Parameter estimates do change.
 #' }
+#' @param start_method Should we use default intiial value or search for a better one ?
+#' @param search_iter Number of values to look for when using *start_method = 'search'*
 #'
 #' @import maxLik
 #' @import stats
@@ -208,7 +210,8 @@ oglmx<-function(formulaMEAN, formulaSD=NULL, data, start=NULL, weights=NULL, lin
                 analhessian=TRUE, sdmodel=expression(exp(z)), SameModelMEANSD=FALSE, na.action,
                 savemodelframe=TRUE, Force=FALSE, robust=FALSE,
                 optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM"),
-                start_method = c("default","search")){
+                start_method = c("default","search"),
+                search_iter = 10){
 
   optmeth <- match.arg(optmeth)
   start_method <- match.arg(start_method)
@@ -348,7 +351,7 @@ oglmx<-function(formulaMEAN, formulaSD=NULL, data, start=NULL, weights=NULL, lin
 
 
   FitInput<-append(list(outcomeMatrix=outcomeMatrix,X=X,Z=Z,w=weights,beta=beta,delta=delta,threshparam=threshparam,
-                 start=start,optmeth=optmeth, start_method = start_method),fitinput)
+                 start=start,optmeth=optmeth, start_method = start_method, search_iter = search_iter),fitinput)
   #return(FitInput)
   results<-append(oglmxoutput,do.call("oglmx.fit",FitInput))
 
