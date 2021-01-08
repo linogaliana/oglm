@@ -207,9 +207,11 @@ oglmx<-function(formulaMEAN, formulaSD=NULL, data, start=NULL, weights=NULL, lin
                 constantMEAN=TRUE, constantSD=TRUE, beta=NULL, delta=NULL, threshparam=NULL,
                 analhessian=TRUE, sdmodel=expression(exp(z)), SameModelMEANSD=FALSE, na.action,
                 savemodelframe=TRUE, Force=FALSE, robust=FALSE,
-                optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM")){
+                optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM"),
+                start_method = c("default","draw")){
 
   optmeth <- match.arg(optmeth)
+  start_method <- match.arg(start_method)
 
 
   cl<-match.call()
@@ -275,6 +277,7 @@ oglmx<-function(formulaMEAN, formulaSD=NULL, data, start=NULL, weights=NULL, lin
 
   oglmxoutput$NOutcomes<-No.Outcomes
 
+
   if (!is.null(formulaSD)){
     Z<-model.matrix(formulaSD,mf)
     #termsSD<-terms(formulaSD)
@@ -319,7 +322,7 @@ oglmx<-function(formulaMEAN, formulaSD=NULL, data, start=NULL, weights=NULL, lin
   }
 
   if (savemodelframe){
-    oglmxoutput$modelframes<-list(X=X,Z=Z)
+    oglmxoutput$modelframes<-list(X=X,Z=Z, outcomeMatrix = outcomeMatrix)
   }
 
   if (oglmxoutput$Hetero){
@@ -341,8 +344,11 @@ oglmx<-function(formulaMEAN, formulaSD=NULL, data, start=NULL, weights=NULL, lin
   oglmxoutput$varMeans<-list(XVarMeans,ZVarMeans)
   oglmxoutput$varBinary<-list(XVarBinary,ZVarBinary)
 
+
+
+
   FitInput<-append(list(outcomeMatrix=outcomeMatrix,X=X,Z=Z,w=weights,beta=beta,delta=delta,threshparam=threshparam,
-                 start=start,optmeth=optmeth),fitinput)
+                 start=start,optmeth=optmeth, start_method = start_method),fitinput)
   #return(FitInput)
   results<-append(oglmxoutput,do.call("oglmx.fit",FitInput))
   attr(results$loglikelihood,"No.Obs")<-length(Y)

@@ -1,8 +1,10 @@
 oglmx.fit<-function(outcomeMatrix,X,Z,w,beta,delta,threshparam,link,start,sdmodel,
                     optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM"),
-                    analhessian,robust){
+                    analhessian,robust,
+                    start_method = c("default","draw")){
 
   optmeth <- match.arg(optmeth)
+  start_method <- match.arg(start_method)
 
   # outcomeMatrix<-results.oprobhetOGLMXENV[[1]]
   # X<-results.oprobhetOGLMXENV[[2]]
@@ -46,13 +48,22 @@ oglmx.fit<-function(outcomeMatrix,X,Z,w,beta,delta,threshparam,link,start,sdmode
   CalcEnv<-list2env(CalcEnv)
 
   parametertypes<-list(whichparametersmean,whichparametersscale,whichparametersthresh)
+
   if (is.null(start)){
-    start<-calcstartvalues(parametertypes,sdmodel,threshparam)
+    start_algo<-calcstartvalues(parametertypes,sdmodel,threshparam)
+  }
+
+  if ((start_method != "default") && is.null(start)){
+    # In that case, we replace 0 start by random values
+    start_algo[start_algo != 0] <- rnorm(sum(start_algo != 0),
+                                         sd = mean(start_algo[start_algo == 0], na.rm = TRUE)) #sd is arbitrary
+    # updateComponents(CalcEnv,start_algo)
+    # ll<-loglikelihood.oglmx(inputenv)
   }
 
 
 
-  maximum<-oglmx.maxlik(CalcEnv,start, optmeth = optmeth)
+  maximum<-oglmx.maxlik(CalcEnv,start_algo, optmeth = optmeth)
   results<-collectmaxLikOutput(maximum)
 
   outcomenames<-colnames(outcomeMatrix)

@@ -23,7 +23,8 @@ oglmx(
   savemodelframe = TRUE,
   Force = FALSE,
   robust = FALSE,
-  optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM")
+  optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM"),
+  start_method = c("default", "draw")
 )
 }
 \arguments{
