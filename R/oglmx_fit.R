@@ -69,7 +69,7 @@ oglmx.fit<-function(outcomeMatrix,X,Z,w,beta,delta,threshparam,link,start,sdmode
       })
     draws_out <- do.call(rbind, lapply(draws, function(x) x$out))
     draws_out <- draws_out[is.finite(draws_out$llk),]
-    idx_max <- draws_out$iter[draws_out$llk == max(draws_out$llk)][1,]
+    idx_max <- draws_out$iter[draws_out$llk == max(draws_out$llk)][1]
     start_algo <- draws[[idx_max]]$input
     # updateComponents(CalcEnv,start_algo)
     # ll<-loglikelihood.oglmx(inputenv)
