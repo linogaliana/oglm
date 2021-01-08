@@ -24,7 +24,7 @@ oglmx(
   Force = FALSE,
   robust = FALSE,
   optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM"),
-  start_method = c("default", "draw")
+  start_method = c("default", "search")
 )
 }
 \arguments{

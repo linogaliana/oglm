@@ -208,7 +208,7 @@ oglmx<-function(formulaMEAN, formulaSD=NULL, data, start=NULL, weights=NULL, lin
                 analhessian=TRUE, sdmodel=expression(exp(z)), SameModelMEANSD=FALSE, na.action,
                 savemodelframe=TRUE, Force=FALSE, robust=FALSE,
                 optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM"),
-                start_method = c("default","draw")){
+                start_method = c("default","search")){
 
   optmeth <- match.arg(optmeth)
   start_method <- match.arg(start_method)
@@ -351,6 +351,8 @@ oglmx<-function(formulaMEAN, formulaSD=NULL, data, start=NULL, weights=NULL, lin
                  start=start,optmeth=optmeth, start_method = start_method),fitinput)
   #return(FitInput)
   results<-append(oglmxoutput,do.call("oglmx.fit",FitInput))
+
+
   attr(results$loglikelihood,"No.Obs")<-length(Y)
 
   class(results)<-"oglmx"

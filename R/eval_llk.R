@@ -1,4 +1,11 @@
-eval_llk <- function(params, threshparams,
+eval_llk <- function(Env,Parameters){
+  updateComponents(Env,Parameters)
+  return(loglikelihood.oglmx(Env))
+}
+
+
+
+eval_llk_point <- function(params, threshparams,
                      X, Z, outcomeMat, w,
                      link,
                      whichparametersmean,
@@ -19,7 +26,8 @@ eval_llk <- function(params, threshparams,
     hsdmodel<-D(gsdmodel,"z")
     ZD<-as.vector(Z%*%delta)
   } else{
-    ZD <- Z%*%0
+    ZD <- 0
+    gsdmodel<-NULL; hsdmodel<-NULL
   }
   Std.Dev<-eval({z<-ZD;sdmodel})
   GStd.Dev<-eval({z<-ZD;gsdmodel})
