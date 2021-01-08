@@ -1,7 +1,7 @@
-# eval_llk <- function(Env,Parameters){
-#   updateComponents(Env,Parameters)
-#   return(loglikelihood.oglmx(Env))
-# }
+eval_llk <- function(Env,Parameters){
+  updateComponents(Env,Parameters)
+  return(loglikelihood.oglmx(Env))
+}
 #
 #
 #
