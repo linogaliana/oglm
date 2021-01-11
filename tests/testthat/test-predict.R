@@ -178,7 +178,76 @@ ordered_probit <- oglm::oglmx(
 
 
 xb_probit <- predict(ordered_probit, dataset, type = "xb")
-latent_probit <- predict(ordered_probit, newdata = dataset, type = "latent")
+latent_probit <- predict(ordered_probit, newdata = dataset, type = "latent")$y_latent_pred
+
+
+dataset$pred <- latent_probit
+
+dataset$pred_cut <- cut(dataset$pred, c(-Inf, lbounds, Inf),
+                        labels = sort(unique(dataset$y))
+)
+
+confusion_matrix <- as.data.frame(table(dataset$pred_cut, dataset$y))
+
+
+testthat::test_that("Accuracy (y_pred == y_obs) is not bad for well specified models",{
+  testthat::expect_true(
+    sum(confusion_matrix$Freq[confusion_matrix$Var1 == confusion_matrix$Var2])/sum(confusion_matrix$Freq) > 0.4
+  )
+}
+)
+
+
+# HETEROSCEDASTICITY -----------------------
+
+latenty <- -0.5 + 1.5 * x1 - 0.5 * x2 + 0.5 * z + rnorm(n, sd = exp(0.5 *
+                                                                      x1 - 0.5 * x2))
+# observed y has four possible values: -1,0,1,2
+# threshold values are: -0.5, 0.5, 1.5.
+y <- vector("numeric", n)
+y[latenty < 0.5] <- -1
+y[latenty >= 0.5 & latenty < 1.5] <- 0
+y[latenty >= 1.5 & latenty < 2.5] <- 1
+y[latenty >= 2.5] <- 2
+dataset <- data.frame(y, x1, x2)
+
+
+ordered_probit2 <- oglm::oglmx(
+  data = dataset,
+  formulaMEAN = "y ~ x1+x2",
+  formulaSD = "~ x1 + x2",
+  link = "probit",
+  threshparam = lbounds,
+  constantSD = TRUE)
+
+
+latent_probit <- predict(ordered_probit, newdata = dataset, type = "latent")$y_latent_pred
+
+dataset$pred2 <- latent_probit
+
+dataset$pred_cut2 <- cut(dataset$pred2, c(-Inf, lbounds, Inf),
+                        labels = sort(unique(dataset$y))
+)
+
+confusion_matrix2 <- as.data.frame(table(dataset$pred_cut, dataset$y))
+
+
+testthat::test_that("Accuracy (y_pred == y_obs) is not bad for well specified models",{
+  testthat::expect_true(
+    sum(confusion_matrix2$Freq[confusion_matrix2$Var1 == confusion_matrix2$Var2])/sum(confusion_matrix2$Freq) > 0.5
+  )
+}
+)
+
+
+testthat::test_that("Accuracy (y_pred == y_obs) is improved for well specified models",{
+  testthat::expect_true(
+    sum(confusion_matrix2$Freq[confusion_matrix2$Var1 == confusion_matrix2$Var2])/sum(confusion_matrix2$Freq) > sum(confusion_matrix$Freq[confusion_matrix$Var1 == confusion_matrix$Var2])/sum(confusion_matrix$Freq)
+  )
+}
+)
+
+
 
 
 
