@@ -65,8 +65,8 @@ getThresholds<-function(outcomematrix,thresholdvector){
 getThresholds2<-function(outcomematrix,thresholdvector){
   lb <- c(-Inf, thresholdvector)
   ub <- c(thresholdvector, Inf)
-  lower_bound <- apply(outcomeMatrix, 1, function(r) lb[which(r == 1)])
-  up_bound <- apply(outcomeMatrix, 1, function(r) ub[which(r == 1)])
+  lower_bound <- apply(outcomematrix, 1, function(r) lb[which(r == 1)])
+  up_bound <- apply(outcomematrix, 1, function(r) ub[which(r == 1)])
   return(thresholds=cbind(lower_bound,up_bound))
 }
 
