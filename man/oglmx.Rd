@@ -23,7 +23,9 @@ oglmx(
   savemodelframe = TRUE,
   Force = FALSE,
   robust = FALSE,
-  optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM")
+  optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM"),
+  start_method = c("default", "search"),
+  search_iter = 10
 )
 }
 \arguments{
@@ -132,6 +134,10 @@ by default when calling \code{summary}.}
 
 \item{optmeth}{specifies a method for the maximisation of the likelihood
 passed to \code{\link[maxLik:maxLik]{maxLik::maxLik()}}. Default to \emph{NR} (Newton-Raphson)}
+
+\item{start_method}{Should we use default intiial value or search for a better one ?}
+
+\item{search_iter}{Number of values to look for when using \emph{start_method = 'search'}}
 }
 \value{
 An object of class "\code{oglmx}" with the following components:
@@ -254,5 +260,4 @@ summary(results.oprobhet2)
 margins.oglmx(results.oprobhet2)
 # marginal effects are again identical. Parameter estimates do change.
 }
-
 }
