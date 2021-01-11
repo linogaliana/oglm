@@ -169,7 +169,7 @@ lbounds <- log(bounds)
 
 
 
-ordered_probit <- oglmx(
+ordered_probit <- oglm::oglmx(
   data = dataset,
   formulaMEAN = "y ~ x1+x2",
   link = "probit",

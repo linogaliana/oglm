@@ -48,7 +48,8 @@ loglikelihood.oglmx<-function(Env){
       ll<-sum(logprobs)
       return(wll)
     }
-    ll<-sum(logprobs)
+    # ll<-sum(logprobs)
+    ll<-sum(logprobs[probs>0])
     return(ll)
   })
 }

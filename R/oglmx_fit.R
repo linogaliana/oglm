@@ -139,3 +139,32 @@ oglmx.maxlik<-function(inputenv,start, optmeth = c("NR", "BFGS", "BFGSR", "BHHH"
   output<-maxLik(inputfunc,start=start,iterlim=300,finalHessian=TRUE,method=optmeth) # ,control=list(printLevel=4)
   return(output)
 }
+
+
+# oglmx.maxlik2<-function(inputenv,start, optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM")){
+#   optmeth <- match.arg(optmeth)
+#
+#   ll <- maxLik::maxLik(eval_llk_point,start=start,iterlim=300,finalHessian=TRUE,method=optmeth,
+#          threshparams = threshparams,
+#          X = X, Z = Z, outcomeMat = outcomeMatrix, w = w,
+#          link = link,
+#          whichparametersmean = whichparametersmean,
+#          whichparametersscale = whichparametersscale,
+#          whichparametersthresh = whichparametersthresh,
+#          sdmodel = sdmodel,
+#          analhessian = analhessian)
+#
+#   inputfunc<-function(par){
+#     updateComponents(inputenv,par)
+#     ll<-loglikelihood.oglmx(inputenv)
+#     score<-score_oglmx(inputenv)
+#     attr(ll,"gradient")<-score
+#     if (inputenv$analhessian){
+#       hessian<-hessian_oglmx(inputenv)
+#       attr(ll,"hessian")<-hessian
+#     }
+#     return(ll)
+#   }
+#   output<-maxLik(inputfunc,start=start,iterlim=300,finalHessian=TRUE,method=optmeth) # ,control=list(printLevel=4)
+#   return(output)
+# }
