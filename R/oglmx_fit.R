@@ -58,7 +58,7 @@ oglmx.fit<-function(outcomeMatrix,X,Z,w,beta,delta,threshparam,link,start,sdmode
     search_loglik <- function(start_algo){
       # In that case, we replace 0 start by random values
       start_algo[start_algo == 0] <- rnorm(sum(start_algo == 0),
-                                           sd = sd(start_algo[start_algo != 0], na.rm = TRUE)) #sd is arbitrary
+                                           sd = mean(abs(start_algo[start_algo != 0]), na.rm = TRUE)) #sd is arbitrary
       return(list("init" = start_algo, "llk" = eval_llk(CalcEnv, start_algo)))
     }
     draws <- lapply(seq_len(search_iter), function(i){
