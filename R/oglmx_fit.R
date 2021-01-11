@@ -59,14 +59,26 @@ oglmx.fit<-function(outcomeMatrix,X,Z,w,beta,delta,threshparam,link,start,sdmode
       # In that case, we replace 0 start by random values
       start_algo[start_algo == 0] <- rnorm(sum(start_algo == 0),
                                            sd = mean(abs(start_algo[start_algo != 0]), na.rm = TRUE)) #sd is arbitrary
-      return(list("init" = start_algo, "llk" = eval_llk(CalcEnv, start_algo)))
+      return(list("init" = start_algo,
+                  # "llk" = eval_llk(CalcEnv, start_algo)
+                  "llk" = eval_llk_point(start_algo, threshparams = threshparam,
+                                         X = X, Z = Z, outcomeMat = outcomeMatrix, w = w,
+                                         link = link,
+                                         whichparametersmean = whichparametersmean,
+                                         whichparametersscale = whichparametersscale,
+                                         whichparametersthresh = whichparametersthresh,
+                                         sdmodel = sdmodel,
+                                         analhessian = analhessian)
+      ))
+
+
     }
     draws <- lapply(seq_len(search_iter), function(i){
       out <- search_loglik(start_algo)
       return(
-      list('out' = data.frame(iter = i, llk = out$llk),
-           "input" = out$init))
-      })
+        list('out' = data.frame(iter = i, llk = out$llk),
+             "input" = out$init))
+    })
     draws_out <- do.call(rbind, lapply(draws, function(x) x$out))
     draws_out <- draws_out[is.finite(draws_out$llk),]
     idx_max <- draws_out$iter[draws_out$llk == max(draws_out$llk)][1]

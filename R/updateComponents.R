@@ -62,9 +62,19 @@ getThresholds<-function(outcomematrix,thresholdvector){
   return(thresholds=cbind(leftThreshold,rightThreshold))
 }
 
-
+getThresholds2<-function(outcomematrix,thresholdvector){
+  lb <- c(-Inf, thresholdvector)
+  ub <- c(thresholdvector, Inf)
+  lower_bound <- apply(outcomeMatrix, 1, function(r) lb[which(r == 1)])
+  up_bound <- apply(outcomeMatrix, 1, function(r) ub[which(r == 1)])
+  return(thresholds=cbind(lower_bound,up_bound))
+}
 
 getEtas<-function(thresholds,xb,std.dev){
+  etas<-(thresholds-xb)/std.dev
+  return(list(eta_1=etas[,2,drop=TRUE],eta_0=etas[,1,drop=TRUE]))
+}
+getEtas2<-function(thresholds,xb,std.dev){
   etas<-(thresholds-xb)/std.dev
   return(list(eta_1=etas[,2,drop=TRUE],eta_0=etas[,1,drop=TRUE]))
 }
@@ -120,7 +130,7 @@ hessian_oglmx<-function(Env){
      hessMatrix[whichparametersmean,whichparametersscale]<-crossprod(X[,whichXest],Z[,whichZest]*hessMeVa)
      hessMatrix[whichparametersscale,whichparametersmean]<-t(hessMatrix[whichparametersmean,whichparametersscale])
     }
-    
+
     if (sum(whichAlphaest)>0){
       if (is.null(w)){
         hessMatrix[whichparametersthresh,whichparametersthresh]<-diag(apply(hessThresh_Thresh(whichAlphaest,outcomeMat,etas[[1]],etas[[2]],Std.Dev,probs,link),2,sum),nrow=sum(whichAlphaest))-crossprod(scoThr)
