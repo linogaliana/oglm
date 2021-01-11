@@ -94,7 +94,14 @@ predict.oglmx <- function (object, newdata = NULL, type = c("class", "probs","la
   }
 
   # REMOVE STANDARD ERROR RELATED PARAMETER
+  coeff <- coeff[attr(coeff_list, "coefftypes")[[1]]]
   coeff <- coeff[!is.na(names(coeff))]
+
+  if (ncol(X2) != length(coeff)){
+    X2 <- X2[,attr(coeff_list, "coefftypes")[[1]]]
+  }
+  # X2 <- X2[,attr(coeff_list, "coefftypes")[[1]]]
+
 
   # POSSIBILITY THAT SOME FIXED EFFECTS ARE NOT PRESENT IN X2
   # REMOVE THEM FROM coeff

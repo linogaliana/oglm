@@ -46,11 +46,11 @@ sigma.oglmx <- function(object, ...){
   # Expression for variance computation
   # ---------------------------------------------------
 
-  if (delta != 0){
-    z <- Z %*% delta
-  } else{
-    z <- 0
-  }
+  # if (delta != 0){
+  z <- Z %*% delta
+  # } else{
+  #   z <- 0
+  # }
 
   # Return sigma = g(delta*z)
   # --------------------------------
