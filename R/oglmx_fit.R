@@ -94,6 +94,7 @@ oglmx.fit<-function(outcomeMatrix,X,Z,w,beta,delta,threshparam,link,start,sdmode
 
   outcomenames<-colnames(outcomeMatrix)
   threshnames<-sapply(c(2:length(outcomenames)),function(x){paste("Threshold (",outcomenames[x-1],"->",outcomenames[x],")",sep="")})
+  if (ncol(Z) == 1) colnames(Z) <- "ln(sigma)"
   names(results$coefficients)<-c(colnames(X)[whichXest],colnames(Z)[whichZest],threshnames[whichAlphaest])
 
 
