@@ -10,7 +10,7 @@ print.oglmx <- function(x, digits = max(3L, getOption("digits") - 3L),
 
   if (length(coef(x))){
 
-    cat("Coefficients")
+    cat("Coefficients:\n")
 
     if (is.character(co <- x$contrasts))
       cat("  [contrasts: ", apply(cbind(names(co), co),
@@ -24,7 +24,6 @@ print.oglmx <- function(x, digits = max(3L, getOption("digits") - 3L),
     )
     names(formated_coef) <- names(x$coefficients)
 
-    cat(":\n")
     print.default(
       formated_coef,
       print.gap = 2,
