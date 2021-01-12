@@ -43,6 +43,8 @@ testthat::expect_equal(
 
 
 # COEFFICIENT PART ===========
+std <- diag(mod1$vcov)^0.5
+
 
 print_coef <- function(x){
 
