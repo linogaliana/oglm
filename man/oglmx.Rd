@@ -24,6 +24,7 @@ oglmx(
   Force = FALSE,
   robust = FALSE,
   optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM"),
+  tol = 1e-20,
   start_method = c("default", "search"),
   search_iter = 10
 )
@@ -134,6 +135,9 @@ by default when calling \code{summary}.}
 
 \item{optmeth}{specifies a method for the maximisation of the likelihood
 passed to \code{\link[maxLik:maxLik]{maxLik::maxLik()}}. Default to \emph{NR} (Newton-Raphson)}
+
+\item{tol}{Argument passed to \link{qr.solve}, defines the tolerance
+for detecting linear dependencies in the hessian matrix to be inverted.}
 
 \item{start_method}{Should we use default intiial value or search for a better one ?}
 
