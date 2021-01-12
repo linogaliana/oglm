@@ -87,6 +87,8 @@
 #'   by default when calling `summary`.
 #' @param optmeth specifies a method for the maximisation of the likelihood
 #'   passed to [maxLik::maxLik()]. Default to *NR* (Newton-Raphson)
+#' @param tol Argument passed to [qr.solve], defines the tolerance
+#' for detecting linear dependencies in the hessian matrix to be inverted.
 #' @inheritParams stats::glm
 #'
 #' @return An object of class "\code{oglmx}" with the following components:
@@ -210,6 +212,7 @@ oglmx<-function(formulaMEAN, formulaSD=NULL, data, start=NULL, weights=NULL, lin
                 analhessian=TRUE, sdmodel=expression(exp(z)), SameModelMEANSD=FALSE, na.action,
                 savemodelframe=TRUE, Force=FALSE, robust=FALSE,
                 optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM"),
+                tol=1e-20,
                 start_method = c("default","search"),
                 search_iter = 10){
 
@@ -359,6 +362,9 @@ oglmx<-function(formulaMEAN, formulaSD=NULL, data, start=NULL, weights=NULL, lin
   attr(results$loglikelihood,"No.Obs")<-length(Y)
 
   class(results)<-"oglmx"
+
+  results$vcov <- vcov(results,tol=tol)
+
   return(results)
 
   #return(list(Y,X,Z,outcomeMatrix,weights))
