@@ -100,3 +100,31 @@ testthat::test_that(
                    constantSD=FALSE,delta=0,threshparam=NULL)
     )
   })
+
+
+
+# User-defined bounds can be provided ------
+
+mod1 <- oglm::oglmx(y ~ x1 + x2 + z,
+                    data=dataset,link="probit",
+                    threshparam=c(-.5, .5,1.5))
+
+testthat::test_that("When providing bounds, thresholds are not estimated but std is",{
+  testthat::expect_identical(
+    length(mod1$coefficients),
+    1L + 3L + 1L #intercept + 3 variables + std
+  )
+  testthat::expect_identical(
+    names(mod1$coefficients),
+    c("(Intercept)","x1","x2","z","ln(sigma)")
+  )
+  testthat::expect_identical(
+    attr(mod1$coefficients, "coefftypes"),
+    list(
+      c(rep(TRUE, 4), FALSE),
+      c(rep(FALSE, 4), TRUE),
+      rep(FALSE, 5)
+    )
+  )
+})
+
