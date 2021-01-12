@@ -1,8 +1,8 @@
 #' @export
 
 
-summary.oglmx<-function(object,tol=1e-20, ... ){
-  stdEr.oglmx<-diag(vcov(object,tol=tol))^0.5
+summary.oglmx<-function(object, ... ){
+  stdEr.oglmx<-diag(object$vcov)^0.5
   t<-object$coefficients/stdEr.oglmx
   p <- 2*pnorm( -abs( t))
   results <- cbind("Estimate"=object$coefficients,
