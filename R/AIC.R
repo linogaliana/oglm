@@ -9,6 +9,7 @@
 #' @details See [stats::AIC()]
 #' @seealso [stats::AIC()],
 #'  [stats::logLik()], [stats::nobs()]
+#' @export
 
 AIC.oglmx<-function(object, ..., k=2){
   # 2*number of estimatated parameters - 2*log likelihood
