@@ -1,4 +1,12 @@
-# working
+#' Calculate Variance-Covariance Matrix for a Fitted Model Object
+#' Returns the variance-covariance matrix of the main parameters of a
+#'   fitted model object of class `oglm`.See \link[stats]{vcov} for
+#'   more details
+#'
+#' @inheritParams stats::vcov
+#' @inheritParams qr.solve
+#' @export
+
 vcov.oglmx<-function(object,tol=1e-20,...){
   if (is.null(object$BHHHhessian)){
     vcov<-qr.solve(-object$hessian,tol=tol)
