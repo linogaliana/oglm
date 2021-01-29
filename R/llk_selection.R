@@ -39,4 +39,8 @@ dPhidx1 <- function(x1,x2,rho){
 }
 
 
-
+dPhidrho <- function(x1,x2,rho){
+  return(
+    dens_mvnorm(x1,x2,rho)
+  )
+}
