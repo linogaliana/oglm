@@ -44,3 +44,15 @@ dPhidrho <- function(x1,x2,rho){
     dens_mvnorm(x1,x2,rho)
   )
 }
+
+
+dPhidgamma <- function(x, z, rho, sigma,
+                                beta, gamma, alpha_m){
+
+  dphi_eval <- dPhidx2((alpha_m - x %*% beta) /sigma, z %*% gamma, -rho)
+
+  return(
+    t(dphi_eval) %*% z
+  )
+
+}
