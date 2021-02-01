@@ -1,19 +1,46 @@
-llk_selection <- function(y_selection, beta, X, gamma, Z,
-                          y_outcome, thresholds, rho, sigma){
+llk_selection <- function(y, beta, X, gamma, Z,
+                          thresholds, rho, sigma){
 
-  rho_matrix <- matrix(c( 1, -rho, -rho, 1), nrow = 2 )
+  zhat <- drop(Z %*% gamma)
+  rho_matrix <- matrix(c(1, -rho, -rho, 1), nrow = 2)
+  xhat <- drop(X %*% beta)
+  m_index <- findInterval(y, thresholds)
+  idx_0 <- which(y == 0)
 
-  llk_censor <- (1 - y_selection)*log(pnorm(-gamma %*% Z))
-  llk_observed <- y_selection*log(
-    mvtnorm::pmvnorm((thresholds[m + 1] - beta %*% X)/sigma,
-                     (thresholds[m] - beta %*% X)/sigma,
-                     sigma = rho_matrix)
+  llk <- rep(NA, nrow(X))
+  llk[idx_0] <- pnorm(-zhat, log.p = TRUE)[idx_0]
+
+
+
+  llk_observed_i <- function(i){
+    p1 <- mvtnorm::pmvnorm(
+      upper = c(
+        ((thresholds[m_index + 1] - xhat)/sigma)[i],
+        xhat[i]
+      ),
+      sigma = rho_matrix)
+    p2 <- mvtnorm::pmvnorm(
+      upper = c(
+        ((thresholds[m_index] - xhat)/sigma)[i],
+        xhat[i]
+      ),
+      sigma = rho_matrix)
+
+    return(p1 - p2)
+  }
+
+  llk[!idx_0] <- log(
+    pmax(
+      do.call(rbind,
+              lapply(which(!idx_0),
+                     llk_observed_i)
+      ), .Machine$double.eps)
   )
-
-  llk <- llk_censor + llk_observed
 
   return(llk)
 }
+
+
 
 
 dens_mvnorm <- function(x1,x2,rho){
@@ -71,12 +98,18 @@ dPhidbeta <- function(x, z, rho, sigma,
 }
 
 
-dllkdbeta <- function(y_selection, beta, X, gamma, Z,
-                      y_outcome, thresholds, rho, sigma){
+dllkdbeta <- function(y, beta, X, gamma, Z,
+                      thresholds, rho, sigma){
 
-  rho_matrix <- matrix(c( 1, -rho, -rho, 1), nrow = 2 )
+  zhat <- drop(Z %*% gamma)
+  rho_matrix <- matrix(c(1, -rho, -rho, 1), nrow = 2)
+  xhat <- drop(X %*% beta)
+  m_index <- findInterval(y, thresholds)
+  idx_0 <- which(y == 0)
 
-  p1 <- -(1 - y_selection)*inverse_mills_ratio(- z %*% gamma) %*% z
+  grad_llk <- rep(0, nrow(X))
+
+  grad_llk[idx_0] <- inverse_mills_ratio(- zhat) %*% Z
 
   p2 <- wrap_pnorm((thresholds[m + 1] - X %*% beta)/sigma,
                    z %*% gamma,
@@ -89,7 +122,7 @@ dllkdbeta <- function(y_selection, beta, X, gamma, Z,
                                (thresholds[m] - beta %*% X)/sigma,
                                sigma = rho_matrix)
 
-  p2 <- p2/p2_denom
+  grad_llk[!idx_0] <- p2/p2_denom
 
 
   return(p2)

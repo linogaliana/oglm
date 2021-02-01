@@ -111,3 +111,8 @@ testthat::test_that("Derivates for multivariate normal evaluated around gamma", 
 
 })
 
+
+thresholds <- c(0, 1, 3, 7)
+y <- rexp(10)
+
+
