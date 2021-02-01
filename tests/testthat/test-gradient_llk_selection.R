@@ -50,7 +50,7 @@ testthat:::test_that("Numerical derivatives for multivariate normal ok",{
 })
 
 
-testthat::test_that("Numerical derivates with point evaluation ok", {
+testthat::test_that("Derivates for multivariate normal evaluated around gamma", {
 
   X <- matrix(rnorm(30),10,3)
   Z <- matrix(rnorm(20),10,2)
@@ -63,7 +63,7 @@ testthat::test_that("Numerical derivates with point evaluation ok", {
     maxLik::numericGradient(
       function(g){mvtnorm::pmvnorm(upper = c((alpha  - X %*% beta)[i,]/sigma,
                                              Z[i,] %*% g),
-                                   sigma = matrix(c(1, -rho, -rho, 1),
+                                   sigma = matrix(c(1, rho, rho, 1),
                                                   nrow = 2))},
       gamma
     )
@@ -74,6 +74,37 @@ testthat::test_that("Numerical derivates with point evaluation ok", {
 
     do.call(rbind, lapply(1:10, function(i){
       dPhidgamma(X[i,], Z[i,], -rho, sigma,
+                 beta, gamma, alpha_m = alpha)
+    }))
+  )
+
+})
+
+
+testthat::test_that("Derivates for multivariate normal evaluated around gamma", {
+
+  X <- matrix(rnorm(30),10,3)
+  Z <- matrix(rnorm(20),10,2)
+  alpha <- 2
+  beta <- c(0,-1,2)
+  gamma <- c(2,-0.5)
+  sigma <- 3
+
+  grad_beta <- function(i){
+    maxLik::numericGradient(
+      function(b){mvtnorm::pmvnorm(upper = c((alpha  - X %*% b)[i,]/sigma,
+                                             Z[i,] %*% gamma),
+                                   sigma = matrix(c(1, rho, rho, 1),
+                                                  nrow = 2))},
+      beta
+    )
+  }
+
+  testthat::expect_equal(
+    do.call(rbind, lapply(1:10, grad_beta)),
+
+    do.call(rbind, lapply(1:10, function(i){
+      dPhidbeta(X[i,], Z[i,], -rho, sigma,
                  beta, gamma, alpha_m = alpha)
     }))
   )

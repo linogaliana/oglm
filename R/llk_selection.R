@@ -56,3 +56,16 @@ dPhidgamma <- function(x, z, rho, sigma,
   )
 
 }
+
+
+dPhidbeta <- function(x, z, rho, sigma,
+                       beta, gamma, alpha_m){
+
+
+  dphi_eval <- dPhidx1((alpha_m - x %*% beta) /sigma, z %*% gamma, -rho)
+
+  return(
+    -t(dphi_eval) %*% x/sigma
+  )
+
+}
