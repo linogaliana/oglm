@@ -1,28 +1,30 @@
 llk_selection <- function(y, beta, X, gamma, Z,
                           thresholds, rho, sigma){
 
+  rho <- tanh(rho)
+  sigma <- exp(sigma)
   zhat <- drop(Z %*% gamma)
   rho_matrix <- matrix(c(1, -rho, -rho, 1), nrow = 2)
   xhat <- drop(X %*% beta)
-  m_index <- findInterval(y, thresholds)
-  idx_0 <- which(y == 0)
+  idx_0 <- (y == 0)
 
   llk <- rep(NA, nrow(X))
   llk[idx_0] <- pnorm(-zhat, log.p = TRUE)[idx_0]
 
-
+  if (is.finite(max(thresholds))) thresholds <- c(thresholds, Inf)
+  m_index <- findInterval(y, thresholds)
 
   llk_observed_i <- function(i){
     p1 <- mvtnorm::pmvnorm(
       upper = c(
         ((thresholds[m_index + 1] - xhat)/sigma)[i],
-        xhat[i]
+        zhat[i]
       ),
       sigma = rho_matrix)
     p2 <- mvtnorm::pmvnorm(
       upper = c(
         ((thresholds[m_index] - xhat)/sigma)[i],
-        xhat[i]
+        zhat[i]
       ),
       sigma = rho_matrix)
 
