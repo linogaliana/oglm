@@ -1,7 +1,10 @@
 llk_selection <- function(y, beta, X, gamma, Z,
                           thresholds, rho, sigma){
 
+  # tanh rho is estimated
   rho <- tanh(rho)
+
+  # exp(sigma) estimated to get positive sigma
   sigma <- exp(sigma)
   zhat <- drop(Z %*% gamma)
   rho_matrix <- matrix(c(1, -rho, -rho, 1), nrow = 2)
@@ -100,34 +103,194 @@ dPhidbeta <- function(x, z, rho, sigma,
 }
 
 
-dllkdbeta <- function(y, beta, X, gamma, Z,
+dllkdgamma <- function(y, beta, X, gamma, Z,
                       thresholds, rho, sigma){
+
+  llk_observed_i <- function(i){
+    p1 <- mvtnorm::pmvnorm(
+      upper = c(
+        ((thresholds[m_index + 1] - xhat)/sigma)[i],
+        zhat[i]
+      ),
+      sigma = rho_matrix)
+    p2 <- mvtnorm::pmvnorm(
+      upper = c(
+        ((thresholds[m_index] - xhat)/sigma)[i],
+        zhat[i]
+      ),
+      sigma = rho_matrix)
+
+    return(p1 - p2)
+  }
+
+
+  # tanh rho is estimated
+  rho <- tanh(rho)
+
+  # exp(sigma) estimated to get positive sigma
+  sigma <- exp(sigma)
 
   zhat <- drop(Z %*% gamma)
   rho_matrix <- matrix(c(1, -rho, -rho, 1), nrow = 2)
   xhat <- drop(X %*% beta)
   m_index <- findInterval(y, thresholds)
-  idx_0 <- which(y == 0)
+  idx_0 <- (y == 0)
 
-  grad_llk <- rep(0, nrow(X))
+  grad_llk <- matrix(0, nrow(Z), length(gamma))
 
-  grad_llk[idx_0] <- inverse_mills_ratio(- zhat) %*% Z
+  # Gradient for observations where y == 0
+  grad_llk[idx_0,] <- - (inverse_mills_ratio(- zhat) * Z)[idx_0,]
 
-  p2 <- wrap_pnorm((thresholds[m + 1] - X %*% beta)/sigma,
-                   z %*% gamma,
+  p2 <- wrap_pnorm((thresholds[m_index + 1] - xhat)/sigma,
+                   zhat,
                    rho)
-  p2 <- p2 - wrap_pnorm((thresholds[m] - X %*% beta)/sigma,
-                        z %*% gamma,
+  p2 <- p2 - wrap_pnorm((thresholds[m_index] - xhat)/sigma,
+                        zhat,
                         rho)
-  p2 <- p2*dnorm(z %*% gamma)*z
-  p2_denom <- mvtnorm::pmvnorm((thresholds[m + 1] - beta %*% X)/sigma,
-                               (thresholds[m] - beta %*% X)/sigma,
-                               sigma = rho_matrix)
+  p2 <- p2*dnorm(zhat)*Z
 
-  grad_llk[!idx_0] <- p2/p2_denom
+  diff_pmvnorm <- pmax(
+      do.call(rbind,
+              lapply(which(!idx_0),
+                     llk_observed_i)
+      ), .Machine$double.eps)
+
+  grad_llk[!idx_0,] <- p2[!idx_0,]/diff_pmvnorm
 
 
-  return(p2)
+  return(grad_llk)
+}
+
+
+dllkdbeta <- function(y, beta, X, gamma, Z,
+                       thresholds, rho, sigma){
+
+  llk_observed_i <- function(i){
+    p1 <- mvtnorm::pmvnorm(
+      upper = c(
+        ((thresholds[m_index + 1] - xhat)/sigma)[i],
+        zhat[i]
+      ),
+      sigma = rho_matrix)
+    p2 <- mvtnorm::pmvnorm(
+      upper = c(
+        ((thresholds[m_index] - xhat)/sigma)[i],
+        zhat[i]
+      ),
+      sigma = rho_matrix)
+
+    return(p1 - p2)
+  }
+
+
+  # tanh rho is estimated
+  rho <- tanh(rho)
+
+  # exp(sigma) estimated to get positive sigma
+  sigma <- exp(sigma)
+
+  zhat <- drop(Z %*% gamma)
+  rho_matrix <- matrix(c(1, -rho, -rho, 1), nrow = 2)
+  xhat <- drop(X %*% beta)
+  m_index <- findInterval(y, thresholds)
+  idx_0 <- (y == 0)
+
+  grad_llk <- matrix(0, nrow(X), length(beta))
+
+  # Gradient for observations where y == 0
+  # stays 0 !
+
+  p2_pnorm1 <- wrap_pnorm(zhat,
+                   (thresholds[m_index + 1] - xhat)/sigma,
+                   rho)
+  p2_dnorm1 <- dnorm((thresholds[m_index + 1] - xhat)/sigma)
+  p2_pnorm2 <- wrap_pnorm(zhat,
+                        (thresholds[m_index] - xhat)/sigma,
+                        rho)
+  p2_dnorm2 <- dnorm((thresholds[m_index] - xhat)/sigma)
+  p2 <- p2_pnorm1*p2_dnorm1 -  p2_pnorm2*p2_dnorm2
+  p2 <- -p2*X/sigma
+
+  diff_pmvnorm <- pmax(
+    do.call(rbind,
+            lapply(which(!idx_0),
+                   llk_observed_i)
+    ), .Machine$double.eps)
+
+  grad_llk[!idx_0,] <- p2[!idx_0,]/as.numeric(diff_pmvnorm)
+
+
+  return(grad_llk)
+}
+
+dllkdrho <- function(y, beta, X, gamma, Z,
+                      thresholds, rho, sigma){
+
+  dff_pnorm <- function(i){
+    p1 <- mvtnorm::pmvnorm(
+      upper = c(
+        ((thresholds[m_index + 1] - xhat)/sigma)[i],
+        zhat[i]
+      ),
+      sigma = rho_matrix)
+    p2 <- mvtnorm::pmvnorm(
+      upper = c(
+        ((thresholds[m_index] - xhat)/sigma)[i],
+        zhat[i]
+      ),
+      sigma = rho_matrix)
+
+    return(p1 - p2)
+  }
+  dff_dnorm <- function(i){
+    p1 <- mvtnorm::dmvnorm(
+      x = c(
+        ((thresholds[m_index + 1] - xhat)/sigma)[i],
+        zhat[i]
+      ),
+      sigma = rho_matrix)
+    p2 <- mvtnorm::dmvnorm(
+       c(
+        ((thresholds[m_index] - xhat)/sigma)[i],
+        zhat[i]
+      ),
+      sigma = rho_matrix)
+
+    return(p1 - p2)
+  }
+
+  # tanh rho is estimated
+  rho <- tanh(rho)
+
+  # exp(sigma) estimated to get positive sigma
+  sigma <- exp(sigma)
+
+  zhat <- drop(Z %*% gamma)
+  rho_matrix <- matrix(c(1, -rho, -rho, 1), nrow = 2)
+  xhat <- drop(X %*% beta)
+  m_index <- findInterval(y, thresholds)
+  idx_0 <- (y == 0)
+
+
+  # Gradient for observations where y == 0
+  # stays 0 !
+
+  diff_pmvnorm <- pmax(
+    do.call(rbind,
+            lapply(which(!idx_0),
+                   dff_pnorm)
+    ), .Machine$double.eps)
+  diff_dmvnorm <- -do.call(rbind,
+            lapply(which(!idx_0),
+                   dff_dnorm)
+    )*(1-rho^2)
+
+
+  # because we estimate arctanh(rho)
+  grad_llk <- as.numeric(diff_dmvnorm)/as.numeric(diff_pmvnorm)
+
+
+  return(grad_llk)
 }
 
 inverse_mills_ratio <- function(x){
