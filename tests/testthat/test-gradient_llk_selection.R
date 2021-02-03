@@ -80,15 +80,17 @@ testthat::test_that("Derivates for multivariate normal evaluated around gamma", 
 
 })
 
+X <- matrix(rnorm(30),10,3)
+Z <- matrix(rnorm(20),10,2)
+alpha <- 2
+beta <- c(0,-1,2)
+gamma <- c(2,-0.5)
+sigma <- 3
+
 
 testthat::test_that("Derivates for multivariate normal evaluated around gamma", {
 
-  X <- matrix(rnorm(30),10,3)
-  Z <- matrix(rnorm(20),10,2)
-  alpha <- 2
-  beta <- c(0,-1,2)
-  gamma <- c(2,-0.5)
-  sigma <- 3
+
 
   grad_beta <- function(i){
     maxLik::numericGradient(
@@ -112,7 +114,5 @@ testthat::test_that("Derivates for multivariate normal evaluated around gamma", 
 })
 
 
-thresholds <- c(0, 1, 3, 7)
-y <- rexp(10)
 
 

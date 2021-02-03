@@ -56,3 +56,7 @@ testthat::test_that("Log-likelihood consistent with sampleSelection",{
     as.numeric(logLik(res))
   )
 })
+
+
+dllkdgamma(y, beta, X, gamma, Z,
+           thresholds, rho, sigma)
