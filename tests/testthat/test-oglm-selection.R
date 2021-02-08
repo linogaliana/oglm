@@ -28,7 +28,44 @@ table( dat$yO )
 
 res <- sampleSelection::selection( yS ~ x1 + x2, yO ~ x1, data = dat, boundaries = bound )
 
-mf <- sel(selection =  yS ~ x1 + x2, outcome = yO ~ x1, data = dat, boundaries = bound )
+
+
+
+# LOG LIKELIHOOD GRADIENTS -----------------
+y <- dat$yOu
+y[is.na(y)] <- 0
+
+X <- as.matrix(cbind(1, dat$x1))
+Z <- as.matrix(cbind(1, dat[,c("x1", "x2")]))
+beta <-  as.numeric(res$estimate[4:5])
+gamma <- as.numeric(res$estimate[1:3])
+sigma <- as.numeric(res$estimate[6])
+rho <- res$estimate[7]
+thresholds <- bound
+theta <- c(beta, gamma, rho, sigma)
+
+testthat::test_that("Derivates for loglikelihood evaluated around beta", {
+
+
+
+  grad_numeric <- maxLik::numericGradient(
+    function(theta){llk_selection_wrapper(theta, y, X, Z, thresholds)},
+    theta
+  )
+
+  grad_analytical <- grad_llk_selection_wrapper(theta, y, X, Z, thresholds)
+
+  testthat::expect_equal(
+    grad_numeric,
+    grad_analytical,
+    check.attributes = FALSE
+  )
+
+})
+
+
+
+mf <- toto(selection =  yS ~ x1 + x2, outcome = yO ~ x1, data = dat, boundaries = bound )
 
 
 
@@ -43,7 +80,7 @@ gamma <- as.numeric(res$estimate[1:3])
 sigma <- as.numeric(res$estimate[6])
 rho <- res$estimate[7]
 thresholds <- bound
-
+boundaries = bound
 
 
 
@@ -58,5 +95,32 @@ testthat::test_that("Log-likelihood consistent with sampleSelection",{
 })
 
 
-dllkdgamma(y, beta, X, gamma, Z,
-           thresholds, rho, sigma)
+
+
+selection_model <- sampleSelection::selection( yS ~ x1 + x2, yO ~ x1, data = dat, boundaries = bound )
+
+start <- toto( yS ~ x1 + x2, yO ~ x1, data = dat, boundaries = bound )
+
+
+
+head(
+  grad_llk_selection(y, selection_model$estimate[4:5], X,
+                     selection_model$estimate[1:3], Z,
+                     thresholds, selection_model$estimate["atanhRho"], selection_model$estimate['logSigma'])
+)
+
+head(
+  selection_model$gradientObs
+)
+
+theta <- c(beta, gamma, rho, sigma)
+
+opt <- maxLik::maxLik(
+  llk_selection_wrapper,
+  grad = grad_llk_selection_wrapper,
+  hess = NULL,
+  start = startVal,
+  y = y, X = X, Z = Z, thresholds = thresholds
+)
+
+
