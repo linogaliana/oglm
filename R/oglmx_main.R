@@ -238,6 +238,12 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
   if (!is.null(formulaSD)) formulaSD <- as.formula(formulaSD)
   if (!is.null(selection)) selection <- as.formula(selection)
 
+  if ((!is.null(selection)) && (!is.null(formulaSD))){
+    message("Heteroskedastic model not implemented with censored model. Forcing homoskedastic model")
+    formulaSD <- NULL
+  }
+
+
   if (!is.null(formulaSD)){
   #  if (!constantSD){formulaSD<-update(formulaSD,~0+.)}
     cl$formulaMEAN<-mergeformulas(formulaMEAN,formulaSD)
@@ -295,9 +301,15 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
       Zint<-match("(Intercept)",colnames(Z),nomatch = 0L)
       if (Zint>0L){Z<-Z[,-Zint,drop=FALSE]}
     }
-  } else {
+    oglmxoutput$selection<-FALSE
+  } else if (is.null(selection)) {
     Z<-matrix(rep(1,nrow(X)),ncol=1)
     oglmxoutput$Hetero<-FALSE
+    oglmxoutput$selection<-FALSE
+  } else{
+    Z <- model.matrix(selection,mf)
+    oglmxoutput$Hetero<-FALSE
+    oglmxoutput$selection<-TRUE
   }
 
   oglmxoutput$formula<-list(meaneq=formulaMEAN,sdeq=formulaSD)
