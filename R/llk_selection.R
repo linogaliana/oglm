@@ -377,9 +377,9 @@ dllkdsigma <- function(y, beta, X, gamma, Z,
   }
 
   diff_numerator <- function(i){
-    p1 <- wrap_dpnorm(xhat[i], ((thresholds[m_index + 1] - xhat)/sigma)[i],
+    p1 <- wrap_dpnorm(zhat[i], ((thresholds[m_index + 1] - xhat)/sigma)[i],
                 rho, sigma)
-    p2 <- wrap_dpnorm(xhat[i], ((thresholds[m_index] - xhat)/sigma)[i],
+    p2 <- wrap_dpnorm(zhat[i], ((thresholds[m_index] - xhat)/sigma)[i],
                       rho, sigma)
     return(p1 - p2)
   }
@@ -392,17 +392,14 @@ dllkdsigma <- function(y, beta, X, gamma, Z,
     ), .Machine$double.eps)
 
 
-  diff_dpnorm <- pmax(
-    do.call(rbind,
-            lapply(which(!idx_0),
+  diff_dpnorm <- lapply(which(!idx_0),
                    diff_numerator)
-    ), .Machine$double.eps)
 
 
   grad_llk <- as.numeric(diff_dpnorm)/as.numeric(diff_pmvnorm)
 
   # we need gradient with respect to log(sigma)
-  grad_llk <- grad_llk/sigma
+  grad_llk <- grad_llk*sigma
 
   return(grad_llk)
 }
@@ -420,7 +417,7 @@ wrap_pnorm <- function(x1,x2,rho){
 
 
 wrap_dpnorm <- function(x1,x2,rho,sigma){
-  p <- -wrap_pnorm(x1,x2,rho)*dnorm(x2/sigma)*x2/(sigma^2)
+  p <- -wrap_pnorm(x1,x2,rho)*dnorm(x2)*x2/sigma
   return(
     ifelse(is.infinite(x2), 0, p)
   )
