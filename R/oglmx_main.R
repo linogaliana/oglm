@@ -363,7 +363,7 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
   if (is.null(selection)){
     results<-append(oglmxoutput,do.call("oglmx.fit",FitInput))
   } else{
-    results<-append(oglmxoutput,do.call("oglmx.fit_selection",FitInput))
+    results<-append(oglmxoutput,do.call("oglmx.fit2",FitInput))
   }
 
 
@@ -371,9 +371,28 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
 
   class(results)<-"oglmx"
 
-  if (!is.null(selection)) class(results) <- c("oglmx.selection",class(results))
 
-  results$vcov <- vcov(results,tol=tol)
+  if (!is.null(selection)){
+    names(result$estimate) <- c(colnames(X), colnames(Z), "atanhRho" ,"log(sigma)")
+    result$coefAll <- c(result$estimate, sigma = unname(exp(result$estimate["logSigma"])),
+                        sigmaSq = unname(exp(2 * result$estimate["log(sigma)"])),
+                        rho = unname(tanh(result$estimate["atanhRho"])))
+    jac <- cbind(diag(length(result$estimate)), matrix(0, length(result$estimate),
+                                                       3))
+    rownames(jac) <- names(result$estimate)
+    colnames(jac) <- c(names(result$estimate), "sigma", "sigmaSq",
+                       "rho")
+    jac["log(sigma)", "sigma"] <- exp(result$estimate["log(sigma)"])
+    jac["log(sigma)", "sigmaSq"] <- 2 * exp(2 * result$estimate["log(sigma)"])
+    jac["atanhRho", "rho"] <- 1 - (tanh(result$estimate["atanhRho"]))^2
+    result$vcov <- t(jac) %*% vcov(result) %*% jac
+    class(results) <- c("oglmx.selection",class(results))
+    return(result)
+
+  } else{
+    results$vcov <- vcov(results,tol=tol)
+  }
+
 
   return(results)
 
