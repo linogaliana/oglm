@@ -207,7 +207,9 @@
 #' @import maxLik
 #' @import stats
 #' @export
-oglmx<-function(formulaMEAN, formulaSD=NULL, data, start=NULL, weights=NULL, link="probit",
+oglmx<-function(formulaMEAN, formulaSD=NULL,
+                selection = NULL,
+                data, start=NULL, weights=NULL, link="probit",
                 constantMEAN=TRUE, constantSD=TRUE, beta=NULL, delta=NULL, threshparam=NULL,
                 analhessian=TRUE, sdmodel=expression(exp(z)), SameModelMEANSD=FALSE, na.action,
                 savemodelframe=TRUE, Force=FALSE, robust=FALSE,
@@ -234,6 +236,7 @@ oglmx<-function(formulaMEAN, formulaSD=NULL, data, start=NULL, weights=NULL, lin
 
   if (!is.null(formulaMEAN)) formulaMEAN <- as.formula(formulaMEAN)
   if (!is.null(formulaSD)) formulaSD <- as.formula(formulaSD)
+  if (!is.null(selection)) selection <- as.formula(selection)
 
   if (!is.null(formulaSD)){
   #  if (!constantSD){formulaSD<-update(formulaSD,~0+.)}
@@ -356,12 +359,19 @@ oglmx<-function(formulaMEAN, formulaSD=NULL, data, start=NULL, weights=NULL, lin
   FitInput<-append(list(outcomeMatrix=outcomeMatrix,X=X,Z=Z,w=weights,beta=beta,delta=delta,threshparam=threshparam,
                  start=start,optmeth=optmeth, start_method = start_method, search_iter = search_iter),fitinput)
   #return(FitInput)
-  results<-append(oglmxoutput,do.call("oglmx.fit",FitInput))
+
+  if (is.null(selection)){
+    results<-append(oglmxoutput,do.call("oglmx.fit",FitInput))
+  } else{
+    results<-append(oglmxoutput,do.call("oglmx.fit_selection",FitInput))
+  }
 
 
   attr(results$loglikelihood,"No.Obs")<-length(Y)
 
   class(results)<-"oglmx"
+
+  if (!is.null(selection)) class(results) <- c("oglmx.selection",class(results))
 
   results$vcov <- vcov(results,tol=tol)
 
