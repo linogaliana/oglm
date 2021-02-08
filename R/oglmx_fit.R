@@ -1,6 +1,7 @@
 oglmx.fit<-function(outcomeMatrix,X,Z,w,beta,delta,threshparam,link,start,sdmodel,
                     optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM"),
                     analhessian,robust,
+                    censored_model = FALSE,
                     start_method = c("default","search"),
                     search_iter = 10){
 
@@ -51,7 +52,11 @@ oglmx.fit<-function(outcomeMatrix,X,Z,w,beta,delta,threshparam,link,start,sdmode
   parametertypes<-list(whichparametersmean,whichparametersscale,whichparametersthresh)
 
   if (is.null(start)){
-    start_algo<-calcstartvalues(parametertypes,sdmodel,threshparam)
+    if (is.null(censored_model)){
+      start_algo<-calcstartvalues(parametertypes,sdmodel,threshparam)
+    } else{
+      start_algo<-calcstartvalues(parametertypes,sdmodel,threshparam)
+    }
   }
 
   if ((start_method != "default") && is.null(start)){
@@ -87,8 +92,6 @@ oglmx.fit<-function(outcomeMatrix,X,Z,w,beta,delta,threshparam,link,start,sdmode
     # ll<-loglikelihood.oglmx(inputenv)
   }
 
-
-
   maximum<-oglmx.maxlik(CalcEnv,start_algo, optmeth = optmeth)
   results<-collectmaxLikOutput(maximum)
 
@@ -112,6 +115,54 @@ oglmx.fit<-function(outcomeMatrix,X,Z,w,beta,delta,threshparam,link,start,sdmode
   return(results)
 
 }
+
+
+oglmx.fit2 <-function(y,X,Z,thresholds,start,
+                      optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM"),
+                      analhessian,robust,
+                      censored_model = FALSE,
+                      start_method = c("default","search"),
+                      search_iter = 10){
+
+
+  if ((start_method != "default") && is.null(start)){
+    search_loglik <- function(start_algo){
+      # In that case, we replace 0 start by random values
+      start_algo[start_algo == 0] <- rnorm(sum(start_algo == 0),
+                                           sd = mean(abs(start_algo[start_algo != 0]), na.rm = TRUE)) #sd is arbitrary
+      return(list("init" = start_algo,
+                  "llk" = sum(llk_selection_wrapper(theta = start_algo, y = y, X = X, Z = Z, thresholds = thresholds))
+      ))
+    }
+    draws <- lapply(seq_len(search_iter), function(i){
+      out <- search_loglik(c(rep(0, ncol(X) + ncol(Z)), 0.5, 1))
+      return(
+        list('out' = data.frame(iter = i, llk = out$llk),
+             "input" = out$init))
+    })
+    draws_out <- do.call(rbind, lapply(draws, function(x) x$out))
+    draws_out <- draws_out[is.finite(draws_out$llk),]
+    idx_max <- draws_out$iter[draws_out$llk == max(draws_out$llk)][1]
+    start_algo <- draws[[idx_max]]$input
+  } else if (is.null(start)){
+    start_algo <- c(rep(0, ncol(X) + ncol(Z)), 0.5, 1)
+  } else{
+    start_algo <- start
+  }
+
+  result <- maxLik::maxLik(
+    llk_selection_wrapper,
+    grad = grad_llk_selection_wrapper,
+    hess = NULL,
+    start = start_algo,
+    y = y, X = X, Z = Z, thresholds = thresholds
+  )
+
+  result$start <- start_algo
+
+  return(result)
+}
+
 
 collectmaxLikOutput<-function(x){
   output<-list()
@@ -141,31 +192,3 @@ oglmx.maxlik<-function(inputenv,start, optmeth = c("NR", "BFGS", "BFGSR", "BHHH"
   return(output)
 }
 
-
-# oglmx.maxlik2<-function(inputenv,start, optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM")){
-#   optmeth <- match.arg(optmeth)
-#
-#   ll <- maxLik::maxLik(eval_llk_point,start=start,iterlim=300,finalHessian=TRUE,method=optmeth,
-#          threshparams = threshparams,
-#          X = X, Z = Z, outcomeMat = outcomeMatrix, w = w,
-#          link = link,
-#          whichparametersmean = whichparametersmean,
-#          whichparametersscale = whichparametersscale,
-#          whichparametersthresh = whichparametersthresh,
-#          sdmodel = sdmodel,
-#          analhessian = analhessian)
-#
-#   inputfunc<-function(par){
-#     updateComponents(inputenv,par)
-#     ll<-loglikelihood.oglmx(inputenv)
-#     score<-score_oglmx(inputenv)
-#     attr(ll,"gradient")<-score
-#     if (inputenv$analhessian){
-#       hessian<-hessian_oglmx(inputenv)
-#       attr(ll,"hessian")<-hessian
-#     }
-#     return(ll)
-#   }
-#   output<-maxLik(inputfunc,start=start,iterlim=300,finalHessian=TRUE,method=optmeth) # ,control=list(printLevel=4)
-#   return(output)
-# }
