@@ -88,7 +88,7 @@ gamma <- c(2,-0.5)
 sigma <- 3
 
 
-testthat::test_that("Derivates for multivariate normal evaluated around gamma", {
+testthat::test_that("Derivates for multivariate normal evaluated around beta", {
 
 
 
