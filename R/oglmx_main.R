@@ -355,15 +355,19 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
 
 
 
-
+  if (is.null(selection)){
   FitInput<-append(list(outcomeMatrix=outcomeMatrix,X=X,Z=Z,w=weights,beta=beta,delta=delta,threshparam=threshparam,
                  start=start,optmeth=optmeth, start_method = start_method, search_iter = search_iter),fitinput)
+  } else{
+    FitInput<- list(y=y,X=X,Z=Z,thresholds=threshparam,
+                          start=start,optmeth=optmeth, start_method = start_method, search_iter = search_iter)
+  }
   #return(FitInput)
 
   if (is.null(selection)){
     results<-append(oglmxoutput,do.call("oglmx.fit",FitInput))
   } else{
-    results<-append(oglmxoutput,do.call("oglmx.fit2",FitInput))
+    results<-append(oglmxoutput,do.call("oglmx.fit2", FitInput))
   }
 
 
