@@ -137,7 +137,7 @@ oglmx.maxlik<-function(inputenv,start, optmeth = c("NR", "BFGS", "BFGSR", "BHHH"
     }
     return(ll)
   }
-  output<-maxLik(inputfunc,start=start,iterlim=300,finalHessian=TRUE,method=optmeth) # ,control=list(printLevel=4)
+  output<-maxLik::maxLik(inputfunc,start=start,iterlim=300,finalHessian=TRUE,method=optmeth) # ,control=list(printLevel=4)
   return(output)
 }
 
