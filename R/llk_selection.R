@@ -1,4 +1,4 @@
-llk_selection <- function(y, beta, X, gamma, Z,
+llk_selection <- function(y, y_selection, beta, X, gamma, Z,
                           thresholds, rho, sigma){
 
   # tanh rho is estimated
@@ -9,13 +9,15 @@ llk_selection <- function(y, beta, X, gamma, Z,
   zhat <- drop(Z %*% gamma)
   rho_matrix <- matrix(c(1, -rho, -rho, 1), nrow = 2)
   xhat <- drop(X %*% beta)
-  idx_0 <- (y == 0)
+  idx_0 <- (y_selection == 0)
 
   llk <- rep(NA, nrow(X))
   llk[idx_0] <- pnorm(-zhat, log.p = TRUE)[idx_0]
 
   if (is.finite(max(thresholds))) thresholds <- c(thresholds, Inf)
-  m_index <- findInterval(y, thresholds)
+  if (is.finite(min(thresholds))) thresholds <- c(-Inf, thresholds)
+  # m_index <- findInterval(y, thresholds)
+  m_index <- y
 
   llk_observed_i <- function(i){
     p1 <- mvtnorm::pmvnorm(
@@ -46,53 +48,60 @@ llk_selection <- function(y, beta, X, gamma, Z,
 }
 
 
-grad_llk_selection_wrapper <- function(theta, y, X, Z, thresholds){
+grad_llk_selection_wrapper <- function(theta, y, y_selection,
+                                       X, Z, thresholds){
   beta <- theta[1:ncol(X)]
   gamma <- theta[seq(from = ncol(X) + 1,
                      length.out = ncol(Z))]
   rho <- theta[ncol(X) + ncol(Z) + 1]
   sigma <- theta[ncol(X) + ncol(Z) + 2]
   return(
-    grad_llk_selection(y, beta, X, gamma, Z,
-                     thresholds, rho, sigma)
-  )
-}
-
-llk_selection_wrapper <- function(theta, y, X, Z, thresholds){
-  beta <- theta[1:ncol(X)]
-  gamma <- theta[seq(from = ncol(X) + 1,
-                     length.out = ncol(Z))]
-  rho <- theta[ncol(X) + ncol(Z) + 1]
-  sigma <- theta[ncol(X) + ncol(Z) + 2]
-  return(
-    llk_selection(y, beta, X, gamma, Z,
+    grad_llk_selection(y, y_selection, beta, X, gamma, Z,
                        thresholds, rho, sigma)
   )
 }
 
+llk_selection_wrapper <- function(theta, y, y_selection,
+                                  X, Z, thresholds){
+  beta <- theta[1:ncol(X)]
+  gamma <- theta[seq(from = ncol(X) + 1,
+                     length.out = ncol(Z))]
+  rho <- theta[ncol(X) + ncol(Z) + 1]
+  sigma <- theta[ncol(X) + ncol(Z) + 2]
+  return(
+    llk_selection(y, y_selection, beta, X, gamma, Z,
+                  thresholds, rho, sigma)
+  )
+}
 
-grad_llk_selection <- function(y, beta, X, gamma, Z,
-                     thresholds, rho, sigma){
+
+grad_llk_selection <- function(y, y_selection,
+                               beta, X, gamma, Z,
+                               thresholds, rho, sigma){
 
   # Vector of parameters:  (beta, gamma, rho, sigma)
   grad <- matrix(0, length(y), length(beta) + length(gamma) + 2)
 
   # Plug gradient wrt beta
-  grad[,1:length(beta)] <- dllkdbeta(y, beta, X, gamma, Z,
-            thresholds, rho, sigma)
+  grad[,1:length(beta)] <- dllkdbeta(y, y_selection,
+                                     beta, X, gamma, Z,
+                                     thresholds, rho, sigma)
 
   # Plug gradient wrt gamma
   grad[,seq(from = length(beta)+1,
-            length.out = length(gamma))] <- dllkdgamma(y, beta, X, gamma, Z,
-                                     thresholds, rho, sigma)
-
-  # Plug gradient wrt rho
-  grad[y!=0,length(beta) +length(gamma) + 1] <- dllkdrho(y, beta, X, gamma, Z,
+            length.out = length(gamma))] <- dllkdgamma(y, y_selection,
+                                                       beta, X, gamma, Z,
                                                        thresholds, rho, sigma)
 
-  # Plug gradient wrt sigma
-  grad[y!=0,length(beta) +length(gamma) + 2] <- dllkdsigma(y, beta, X, gamma, Z,
+  # Plug gradient wrt rho
+  grad[y_selection!=0,length(beta) +length(gamma) + 1] <- dllkdrho(y, y_selection,
+                                                         beta, X, gamma, Z,
                                                          thresholds, rho, sigma)
+
+  # Plug gradient wrt sigma
+  grad[y_selection!=0,length(beta) +length(gamma) + 2] <- dllkdsigma(y, y_selection,
+                                                           beta, X, gamma, Z,
+                                                           thresholds, rho, sigma)
 
   return(grad)
 }
@@ -154,66 +163,8 @@ dPhidbeta <- function(x, z, rho, sigma,
 }
 
 
-dllkdgamma <- function(y, beta, X, gamma, Z,
-                      thresholds, rho, sigma){
-
-  llk_observed_i <- function(i){
-    p1 <- mvtnorm::pmvnorm(
-      upper = c(
-        ((thresholds[m_index + 1] - xhat)/sigma)[i],
-        zhat[i]
-      ),
-      sigma = rho_matrix)
-    p2 <- mvtnorm::pmvnorm(
-      upper = c(
-        ((thresholds[m_index] - xhat)/sigma)[i],
-        zhat[i]
-      ),
-      sigma = rho_matrix)
-
-    return(p1 - p2)
-  }
-
-
-  # tanh rho is estimated
-  rho <- tanh(rho)
-
-  # exp(sigma) estimated to get positive sigma
-  sigma <- exp(sigma)
-
-  zhat <- drop(Z %*% gamma)
-  rho_matrix <- matrix(c(1, -rho, -rho, 1), nrow = 2)
-  xhat <- drop(X %*% beta)
-  m_index <- findInterval(y, thresholds)
-  idx_0 <- (y == 0)
-
-  grad_llk <- matrix(0, nrow(Z), length(gamma))
-
-  # Gradient for observations where y == 0
-  grad_llk[idx_0,] <- - (inverse_mills_ratio(- zhat) * Z)[idx_0,]
-
-  p2 <- wrap_pnorm((thresholds[m_index + 1] - xhat)/sigma,
-                   zhat,
-                   rho)
-  p2 <- p2 - wrap_pnorm((thresholds[m_index] - xhat)/sigma,
-                        zhat,
-                        rho)
-  p2 <- p2*dnorm(zhat)*Z
-
-  diff_pmvnorm <- pmax(
-      do.call(rbind,
-              lapply(which(!idx_0),
-                     llk_observed_i)
-      ), .Machine$double.eps)
-
-  grad_llk[!idx_0,] <- p2[!idx_0,]/as.numeric(diff_pmvnorm)
-
-
-  return(grad_llk)
-}
-
-
-dllkdbeta <- function(y, beta, X, gamma, Z,
+dllkdgamma <- function(y, y_selection,
+                       beta, X, gamma, Z,
                        thresholds, rho, sigma){
 
   llk_observed_i <- function(i){
@@ -243,8 +194,70 @@ dllkdbeta <- function(y, beta, X, gamma, Z,
   zhat <- drop(Z %*% gamma)
   rho_matrix <- matrix(c(1, -rho, -rho, 1), nrow = 2)
   xhat <- drop(X %*% beta)
-  m_index <- findInterval(y, thresholds)
-  idx_0 <- (y == 0)
+  # m_index <- findInterval(y, thresholds)
+  m_index <- y
+  idx_0 <- (y_selection == 0)
+
+  grad_llk <- matrix(0, nrow(Z), length(gamma))
+
+  # Gradient for observations where y == 0
+  grad_llk[idx_0,] <- - (inverse_mills_ratio(- zhat) * Z)[idx_0,]
+
+  p2 <- wrap_pnorm((thresholds[m_index + 1] - xhat)/sigma,
+                   zhat,
+                   rho)
+  p2 <- p2 - wrap_pnorm((thresholds[m_index] - xhat)/sigma,
+                        zhat,
+                        rho)
+  p2 <- p2*dnorm(zhat)*Z
+
+  diff_pmvnorm <- pmax(
+    do.call(rbind,
+            lapply(which(!idx_0),
+                   llk_observed_i)
+    ), .Machine$double.eps)
+
+  grad_llk[!idx_0,] <- p2[!idx_0,]/as.numeric(diff_pmvnorm)
+
+
+  return(grad_llk)
+}
+
+
+dllkdbeta <- function(y, y_selection,
+                      beta, X, gamma, Z,
+                      thresholds, rho, sigma){
+
+  llk_observed_i <- function(i){
+    p1 <- mvtnorm::pmvnorm(
+      upper = c(
+        ((thresholds[m_index + 1] - xhat)/sigma)[i],
+        zhat[i]
+      ),
+      sigma = rho_matrix)
+    p2 <- mvtnorm::pmvnorm(
+      upper = c(
+        ((thresholds[m_index] - xhat)/sigma)[i],
+        zhat[i]
+      ),
+      sigma = rho_matrix)
+
+    return(p1 - p2)
+  }
+
+
+  # tanh rho is estimated
+  rho <- tanh(rho)
+
+  # exp(sigma) estimated to get positive sigma
+  sigma <- exp(sigma)
+
+  zhat <- drop(Z %*% gamma)
+  rho_matrix <- matrix(c(1, -rho, -rho, 1), nrow = 2)
+  xhat <- drop(X %*% beta)
+  # m_index <- findInterval(y, thresholds)
+  m_index <- y
+  idx_0 <- (y_selection == 0)
 
   grad_llk <- matrix(0, nrow(X), length(beta))
 
@@ -252,12 +265,12 @@ dllkdbeta <- function(y, beta, X, gamma, Z,
   # stays 0 !
 
   p2_pnorm1 <- wrap_pnorm(zhat,
-                   (thresholds[m_index + 1] - xhat)/sigma,
-                   rho)
+                          (thresholds[m_index + 1] - xhat)/sigma,
+                          rho)
   p2_dnorm1 <- dnorm((thresholds[m_index + 1] - xhat)/sigma)
   p2_pnorm2 <- wrap_pnorm(zhat,
-                        (thresholds[m_index] - xhat)/sigma,
-                        rho)
+                          (thresholds[m_index] - xhat)/sigma,
+                          rho)
   p2_dnorm2 <- dnorm((thresholds[m_index] - xhat)/sigma)
   p2 <- p2_pnorm1*p2_dnorm1 -  p2_pnorm2*p2_dnorm2
   p2 <- -p2*X/sigma
@@ -274,8 +287,9 @@ dllkdbeta <- function(y, beta, X, gamma, Z,
   return(grad_llk)
 }
 
-dllkdrho <- function(y, beta, X, gamma, Z,
-                      thresholds, rho, sigma){
+dllkdrho <- function(y, y_selection,
+                     beta, X, gamma, Z,
+                     thresholds, rho, sigma){
 
   dff_pnorm <- function(i){
     p1 <- mvtnorm::pmvnorm(
@@ -301,7 +315,7 @@ dllkdrho <- function(y, beta, X, gamma, Z,
       ),
       sigma = rho_matrix)
     p2 <- mvtnorm::dmvnorm(
-       c(
+      c(
         ((thresholds[m_index] - xhat)/sigma)[i],
         zhat[i]
       ),
@@ -319,8 +333,9 @@ dllkdrho <- function(y, beta, X, gamma, Z,
   zhat <- drop(Z %*% gamma)
   rho_matrix <- matrix(c(1, -rho, -rho, 1), nrow = 2)
   xhat <- drop(X %*% beta)
-  m_index <- findInterval(y, thresholds)
-  idx_0 <- (y == 0)
+  # m_index <- findInterval(y, thresholds)
+  m_index <- y
+  idx_0 <- (y_selection == 0)
 
 
   # Gradient for observations where y == 0
@@ -332,9 +347,9 @@ dllkdrho <- function(y, beta, X, gamma, Z,
                    dff_pnorm)
     ), .Machine$double.eps)
   diff_dmvnorm <- -do.call(rbind,
-            lapply(which(!idx_0),
-                   dff_dnorm)
-    )*(1-rho^2)
+                           lapply(which(!idx_0),
+                                  dff_dnorm)
+  )*(1-rho^2)
 
 
   # because we estimate arctanh(rho)
@@ -344,8 +359,9 @@ dllkdrho <- function(y, beta, X, gamma, Z,
   return(grad_llk)
 }
 
-dllkdsigma <- function(y, beta, X, gamma, Z,
-                      thresholds, rho, sigma){
+dllkdsigma <- function(y, y_selection,
+                       beta, X, gamma, Z,
+                       thresholds, rho, sigma){
 
   # tanh rho is estimated
   rho <- tanh(rho)
@@ -356,8 +372,9 @@ dllkdsigma <- function(y, beta, X, gamma, Z,
   zhat <- drop(Z %*% gamma)
   rho_matrix <- matrix(c(1, -rho, -rho, 1), nrow = 2)
   xhat <- drop(X %*% beta)
-  m_index <- findInterval(y, thresholds)
-  idx_0 <- (y == 0)
+  # m_index <- findInterval(y, thresholds)
+  m_index <- y
+  idx_0 <- (y_selection == 0)
 
   dff_pnorm <- function(i){
     p1 <- mvtnorm::pmvnorm(
@@ -378,7 +395,7 @@ dllkdsigma <- function(y, beta, X, gamma, Z,
 
   diff_numerator <- function(i){
     p1 <- wrap_dpnorm(zhat[i], ((thresholds[m_index + 1] - xhat)/sigma)[i],
-                rho, sigma)
+                      rho, sigma)
     p2 <- wrap_dpnorm(zhat[i], ((thresholds[m_index] - xhat)/sigma)[i],
                       rho, sigma)
     return(p1 - p2)
@@ -393,7 +410,7 @@ dllkdsigma <- function(y, beta, X, gamma, Z,
 
 
   diff_dpnorm <- lapply(which(!idx_0),
-                   diff_numerator)
+                        diff_numerator)
 
 
   grad_llk <- as.numeric(diff_dpnorm)/as.numeric(diff_pmvnorm)

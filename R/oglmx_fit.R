@@ -117,9 +117,8 @@ oglmx.fit<-function(outcomeMatrix,X,Z,w,beta,delta,threshparam,link,start,sdmode
 }
 
 
-oglmx.fit2 <-function(y,X,Z,thresholds,start,
+oglmx.fit2 <-function(y,y_selection,X,Z,thresholds,start,
                       optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM"),
-                      analhessian,robust,
                       censored_model = FALSE,
                       start_method = c("default","search"),
                       search_iter = 10){
@@ -131,7 +130,9 @@ oglmx.fit2 <-function(y,X,Z,thresholds,start,
       start_algo[start_algo == 0] <- rnorm(sum(start_algo == 0),
                                            sd = mean(abs(start_algo[start_algo != 0]), na.rm = TRUE)) #sd is arbitrary
       return(list("init" = start_algo,
-                  "llk" = sum(llk_selection_wrapper(theta = start_algo, y = y, X = X, Z = Z, thresholds = thresholds))
+                  "llk" = sum(llk_selection_wrapper(theta = start_algo,
+                                                    y = y, y_selection = y_selection,
+                                                    X = X, Z = Z, thresholds = thresholds))
       ))
     }
     draws <- lapply(seq_len(search_iter), function(i){
@@ -150,12 +151,16 @@ oglmx.fit2 <-function(y,X,Z,thresholds,start,
     start_algo <- start
   }
 
+  if (is.finite(min(thresholds))) thresholds <- c(-Inf, thresholds)
+  if (is.finite(max(thresholds))) thresholds <- c(thresholds, Inf)
+
   result <- maxLik::maxLik(
     llk_selection_wrapper,
     grad = grad_llk_selection_wrapper,
     hess = NULL,
     start = start_algo,
-    y = y, X = X, Z = Z, thresholds = thresholds
+    y = y, y_selection = y_selection,
+    X = X, Z = Z, thresholds = thresholds
   )
 
   result$start <- start_algo

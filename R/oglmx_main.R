@@ -251,14 +251,31 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
     formulaSD<-formulaMEAN
   }
 
-
+  cls <- cl
   names(cl)[match("formulaMEAN",names(cl))]<-"formula"
-  #return(cl)
+
   m<-match(c("formula","data","subset","weights","na.action","offset"),names(cl),0L)
   mf<-cl[c(1L,m)]
   mf$drop.unused.levels <- TRUE
   mf[[1L]] <- quote(stats::model.frame)
   mf<-eval(mf,parent.frame())
+
+  if (!is.null(selection)){
+    names(cls)[match("selection",names(cls))]<-"formula"
+    ms<-match(c("selection","data","subset","weights","na.action","offset"),names(cl),0L)
+    mfs<-cls[c(1L,ms)]
+    mfs[["formula"]] <- as.formula(mfs[["formula"]])
+    mfs$drop.unused.levels <- TRUE
+    mfs[[1L]] <- quote(stats::model.frame)
+    # terrible temporary hack
+    selection_model <- model.frame(mfs, data = dat)
+    y_selection <- selection_model[, as.character(mfs[["formula"]][[2]])]
+    Z <- selection_model[, !(colnames(selection_model) %in% as.character(mfs[["formula"]][[2]]))]
+    if (!grepl("0 +", as.character("selection"))) Z <- as.matrix(
+      cbind.data.frame("(Intercept)" = 1L, Z)
+    )
+
+    }
 
   factorvars<-names(attr(attr(mf,"terms"),"dataClasses"))[attr(attr(mf,"terms"),"dataClasses")=="factor"]
   attr(factorvars,"levels")<-lapply(factorvars,function(x){levels(mf[[x]])})
@@ -307,7 +324,8 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
     oglmxoutput$Hetero<-FALSE
     oglmxoutput$selection<-FALSE
   } else{
-    Z <- model.matrix(selection,mf)
+    # Z <- model.matrix(as.formula(selection),mf)
+    # Z constructed later on
     oglmxoutput$Hetero<-FALSE
     oglmxoutput$selection<-TRUE
   }
@@ -371,10 +389,10 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
   FitInput<-append(list(outcomeMatrix=outcomeMatrix,X=X,Z=Z,w=weights,beta=beta,delta=delta,threshparam=threshparam,
                  start=start,optmeth=optmeth, start_method = start_method, search_iter = search_iter),fitinput)
   } else{
-    FitInput<- list(y=y,X=X,Z=Z,thresholds=threshparam,
+    FitInput<- list(y=Y,y_selection = y_selection,outcomeMatrix=outcomeMatrix, X=X,Z=Z,thresholds=threshparam,
                           start=start,optmeth=optmeth, start_method = start_method, search_iter = search_iter)
   }
-  #return(FitInput)
+  return(FitInput)
 
   if (is.null(selection)){
     results<-append(oglmxoutput,do.call("oglmx.fit",FitInput))
