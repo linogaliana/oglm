@@ -11,36 +11,24 @@ llk_selection <- function(y, y_selection, beta, X, gamma, Z,
   xhat <- drop(X %*% beta)
   idx_0 <- (y_selection == 0)
 
-  llk <- rep(NA, nrow(X))
-  llk[idx_0] <- pnorm(-zhat, log.p = TRUE)[idx_0]
-
   if (is.finite(max(thresholds))) thresholds <- c(thresholds, Inf)
   if (is.finite(min(thresholds))) thresholds <- c(-Inf, thresholds)
   # outcome_index <- findInterval(y, thresholds)
   outcome_index <- y
 
-  llk_observed_i <- function(i){
-    p1 <- mvtnorm::pmvnorm(
-      upper = c(
-        ((thresholds[outcome_index + 1] - xhat)/sigma)[i],
-        zhat[i]
-      ),
-      sigma = rho_matrix)
-    p2 <- mvtnorm::pmvnorm(
-      upper = c(
-        ((thresholds[outcome_index] - xhat)/sigma)[i],
-        zhat[i]
-      ),
-      sigma = rho_matrix)
 
-    return(p1 - p2)
-  }
+  llk <- rep(NA, nrow(X))
+  llk[idx_0] <- pnorm(-zhat, log.p = TRUE)[idx_0]
 
   llk[!idx_0] <- log(
     pmax(
       do.call(rbind,
               lapply(which(!idx_0),
-                     llk_observed_i)
+                     dff_pnorm,
+                     thresholds = thresholds,
+                     outcome_index = outcome_index,
+                     xhat = xhat, zhat = zhat, sigma = sigma,
+                     rho_matrix = rho_matrix)
       ), .Machine$double.eps)
   )
 
@@ -199,7 +187,11 @@ dllkdgamma <- function(outcome_index, idx_0,
   diff_pmvnorm <- pmax(
     do.call(rbind,
             lapply(which(!idx_0),
-                   dff_pnorm)
+                   dff_pnorm,
+                   thresholds = thresholds,
+                   outcome_index = outcome_index,
+                   xhat = xhat, zhat = zhat, sigma = sigma,
+                   rho_matrix = rho_matrix)
     ), .Machine$double.eps)
 
   grad_llk[!idx_0,] <- p2[!idx_0,]/as.numeric(diff_pmvnorm)
@@ -233,7 +225,11 @@ dllkdbeta <- function(outcome_index, idx_0,
   diff_pmvnorm <- pmax(
     do.call(rbind,
             lapply(which(!idx_0),
-                   dff_pnorm)
+                   dff_pnorm,
+                   thresholds = thresholds,
+                   outcome_index = outcome_index,
+                   xhat = xhat, zhat = zhat, sigma = sigma,
+                   rho_matrix = rho_matrix)
     ), .Machine$double.eps)
 
   grad_llk[!idx_0,] <- p2[!idx_0,]/as.numeric(diff_pmvnorm)
@@ -253,7 +249,11 @@ dllkdrho <- function(outcome_index, idx_0,
   diff_pmvnorm <- pmax(
     do.call(rbind,
             lapply(which(!idx_0),
-                   dff_pnorm)
+                   dff_pnorm,
+                   thresholds = thresholds,
+                   outcome_index = outcome_index,
+                   xhat = xhat, zhat = zhat, sigma = sigma,
+                   rho_matrix = rho_matrix)
     ), .Machine$double.eps)
   diff_dmvnorm <- -do.call(rbind,
                            lapply(which(!idx_0),
@@ -286,7 +286,11 @@ dllkdsigma <- function(outcome_index, idx_0,
   diff_pmvnorm <- pmax(
     do.call(rbind,
             lapply(which(!idx_0),
-                   dff_pnorm)
+                   dff_pnorm,
+                   thresholds = thresholds,
+                   outcome_index = outcome_index,
+                   xhat = xhat, zhat = zhat, sigma = sigma,
+                   rho_matrix = rho_matrix)
     ), .Machine$double.eps)
 
 
