@@ -1,11 +1,12 @@
 llk_selection <- function(y, y_selection, beta, X, gamma, Z,
                           thresholds, rho, sigma){
 
-  # tanh rho is estimated
+  # atanh(rho) estimated to get rho in [-1,1]
   rho <- tanh(rho)
 
-  # exp(sigma) estimated to get positive sigma
+  # log(sigma) estimated to get positive sigma
   sigma <- exp(sigma)
+
   zhat <- drop(Z %*% gamma)
   rho_matrix <- matrix(c(1, -rho, -rho, 1), nrow = 2)
   xhat <- drop(X %*% beta)
@@ -18,10 +19,10 @@ llk_selection <- function(y, y_selection, beta, X, gamma, Z,
 
 
   llk <- rep(NA, nrow(X))
-  llk[idx_0] <- pnorm(-zhat, log.p = TRUE)[idx_0]
+  llk[idx_0] <- as.numeric(pnorm(-zhat, log.p = TRUE)[idx_0])
 
   llk[!idx_0] <- log(
-    pmax(
+    as.numeric(pmax(
       do.call(rbind,
               lapply(which(!idx_0),
                      dff_pnorm,
@@ -29,7 +30,7 @@ llk_selection <- function(y, y_selection, beta, X, gamma, Z,
                      outcome_index = outcome_index,
                      xhat = xhat, zhat = zhat, sigma = sigma,
                      rho_matrix = rho_matrix)
-      ), .Machine$double.eps)
+      ), .Machine$double.eps))
   )
 
   return(llk)
