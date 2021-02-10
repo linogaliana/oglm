@@ -39,11 +39,12 @@ llk_selection <- function(y, y_selection, beta, X, gamma, Z,
 
 grad_llk_selection_wrapper <- function(theta, y, y_selection,
                                        X, Z, thresholds){
-  beta <- theta[1:ncol(X)]
-  gamma <- theta[seq(from = ncol(X) + 1,
-                     length.out = ncol(Z))]
-  rho <- theta[ncol(X) + ncol(Z) + 1]
-  sigma <- theta[ncol(X) + ncol(Z) + 2]
+  # order: theta = (gamma, beta, sigma, rho)
+  gamma <- theta[1:ncol(Z)]
+  beta <- theta[seq(from = ncol(Z) + 1,
+                     length.out = ncol(X))]
+  sigma <- theta[ncol(X) + ncol(Z) + 1]
+  rho <- theta[ncol(X) + ncol(Z) + 2]
   return(
     grad_llk_selection(y, y_selection, beta, X, gamma, Z,
                        thresholds, rho, sigma)
@@ -52,11 +53,12 @@ grad_llk_selection_wrapper <- function(theta, y, y_selection,
 
 llk_selection_wrapper <- function(theta, y, y_selection,
                                   X, Z, thresholds){
-  beta <- theta[1:ncol(X)]
-  gamma <- theta[seq(from = ncol(X) + 1,
-                     length.out = ncol(Z))]
-  rho <- theta[ncol(X) + ncol(Z) + 1]
-  sigma <- theta[ncol(X) + ncol(Z) + 2]
+  # order: theta = (gamma, beta, sigma, rho)
+  gamma <- theta[1:ncol(Z)]
+  beta <- theta[seq(from = ncol(Z) + 1,
+                    length.out = ncol(X))]
+  sigma <- theta[ncol(X) + ncol(Z) + 1]
+  rho <- theta[ncol(X) + ncol(Z) + 2]
   return(
     llk_selection(y, y_selection, beta, X, gamma, Z,
                   thresholds, rho, sigma)
@@ -67,6 +69,7 @@ llk_selection_wrapper <- function(theta, y, y_selection,
 grad_llk_selection <- function(y, y_selection,
                                beta, X, gamma, Z,
                                thresholds, rho, sigma){
+  # order: theta = (gamma, beta, sigma, rho)
 
   # tanh rho is estimated
   rho <- tanh(rho)
@@ -85,26 +88,40 @@ grad_llk_selection <- function(y, y_selection,
   # Vector of parameters:  (beta, gamma, rho, sigma)
   grad <- matrix(0, length(y), length(beta) + length(gamma) + 2)
 
-  # Plug gradient wrt beta
-  grad[,1:length(beta)] <- dllkdbeta(y, y_selection,
-                                     beta, X, gamma, Z,
-                                     thresholds, rho, sigma)
-
   # Plug gradient wrt gamma
-  grad[,seq(from = length(beta)+1,
-            length.out = length(gamma))] <- dllkdgamma(y, y_selection,
-                                                       beta, X, gamma, Z,
-                                                       thresholds, rho, sigma)
+  grad[,1:length(gamma)] <- dllkdgamma(outcome_index = outcome_index,
+                                                       idx_0 = idx_0,
+                                                       xhat = xhat, zhat = zhat,
+                                                       thresholds = thresholds,
+                                                       rho = rho, sigma = sigma,
+                                                       rho_matrix = rho_matrix,
+                                                       Z = Z)
 
-  # Plug gradient wrt rho
-  grad[y_selection!=0,length(beta) +length(gamma) + 1] <- dllkdrho(y, y_selection,
-                                                         beta, X, gamma, Z,
-                                                         thresholds, rho, sigma)
+  # Plug gradient wrt beta
+  grad[,seq(from = length(gamma)+1,
+            length.out = length(beta))] <- dllkdbeta(outcome_index = outcome_index,
+                                                     idx_0 = idx_0,
+                                                     xhat = xhat, zhat = zhat,
+                                                     thresholds = thresholds,
+                                                     rho = rho, sigma = sigma,
+                                                     rho_matrix = rho_matrix,
+                                                     X = X)
 
   # Plug gradient wrt sigma
-  grad[y_selection!=0,length(beta) +length(gamma) + 2] <- dllkdsigma(y, y_selection,
-                                                           beta, X, gamma, Z,
-                                                           thresholds, rho, sigma)
+  grad[y_selection!=0,length(beta) +length(gamma) + 1] <- dllkdsigma(outcome_index = outcome_index,
+                                                                     idx_0 = idx_0,
+                                                                     xhat = xhat, zhat = zhat,
+                                                                     thresholds = thresholds,
+                                                                     rho = rho, sigma = sigma,
+                                                                     rho_matrix = rho_matrix)
+  # Plug gradient wrt rho
+  grad[y_selection!=0,length(beta) +length(gamma) + 2] <- dllkdrho(outcome_index = outcome_index,
+                                                                   idx_0 = idx_0,
+                                                                   xhat = xhat, zhat = zhat,
+                                                                   thresholds = thresholds,
+                                                                   rho = rho, sigma = sigma,
+                                                                   rho_matrix = rho_matrix)
+
 
   return(grad)
 }
@@ -169,10 +186,11 @@ dPhidbeta <- function(x, z, rho, sigma,
 dllkdgamma <- function(outcome_index, idx_0,
                        xhat, zhat,
                        thresholds, rho, sigma,
-                       rho_matrix){
+                       rho_matrix,
+                       Z){
 
 
-  grad_llk <- matrix(0, nrow(Z), length(gamma))
+  grad_llk <- matrix(0, nrow(Z), ncol(Z))
 
   # Gradient for observations where y == 0
   grad_llk[idx_0,] <- - (inverse_mills_ratio(- zhat) * Z)[idx_0,]
@@ -205,9 +223,10 @@ dllkdgamma <- function(outcome_index, idx_0,
 dllkdbeta <- function(outcome_index, idx_0,
                       xhat, zhat,
                       thresholds, rho, sigma,
-                      rho_matrix){
+                      rho_matrix,
+                      X){
 
-  grad_llk <- matrix(0, nrow(X), length(beta))
+  grad_llk <- matrix(0, nrow(X), ncol(X))
 
   # Gradient for observations where y == 0
   # stays 0 !
@@ -258,7 +277,11 @@ dllkdrho <- function(outcome_index, idx_0,
     ), .Machine$double.eps)
   diff_dmvnorm <- -do.call(rbind,
                            lapply(which(!idx_0),
-                                  dff_dnorm)
+                                  dff_dnorm,
+                                  thresholds = thresholds,
+                                  outcome_index = outcome_index,
+                                  xhat = xhat, zhat = zhat, sigma = sigma,
+                                  rho_matrix = rho_matrix)
   )*(1-rho^2)
 
 
