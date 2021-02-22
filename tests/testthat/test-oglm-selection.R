@@ -96,7 +96,21 @@ testthat::test_that("Log-likelihood consistent with sampleSelection",{
   )
 
 
+  testthat::expect_equal(
+    llk_selection_wrapper(
+      theta = selection_model$estimate,
+      y = dat$y_outcome,
+      y_selection = dat$y,
+      X = fitInput$X,
+      Z = fitInput$Z,
+      thresholds = bound),
+    as.numeric(selection_model$objectiveFn(selection_model$estimate))
+  )
+
+
 })
+
+
 
 
 
@@ -164,94 +178,66 @@ testthat::test_that("Derivates for loglikelihood evaluated around beta", {
 })
 
 
-})
 
 
-y <- dat$yOu
-y[is.na(y)] <- 0
+# OPTIMIZATION IS OK -------------------
 
-X <- as.matrix(cbind(1, dat$x1))
-Z <- as.matrix(cbind(1, dat[,c("x1", "x2")]))
-beta <-  as.numeric(res$estimate[4:5])
-gamma <- as.numeric(res$estimate[1:3])
-sigma <- as.numeric(res$estimate[6])
-rho <- res$estimate[7]
-thresholds <- bound
-
-
-
-# INTEGRATION IN OGLM MASTER FUNCTION -------------------
-
-
-fitInput <- sampleSelection::selection(selection =  yS ~ x1 + x2,
-                                       outcome = yO ~ x1, data = dat,
-                                       boundaries = bound)
-dat$y <- dat$yOu
-dat$y[is.na(dat$y)] <- 0
-
-dat$yO[is.na(dat$yO)] <- "(-Inf,5]"
-
-oglm::oglmx("yO ~ x1 + x2",
-            data=dat,link="probit",constantMEAN=FALSE,
-            constantSD=FALSE,delta=0,
-            threshparam = c(5, 15))
-
-
-
-
-fitInput <- oglmx(selection =  "y ~ x1 + x2",
-                  formulaMEAN ="yO ~ x1", data = dat,
-                  threshparam = c(5, 15))
-
-
-
-
-
-
-
-y <- dat$yOu
-y[is.na(y)] <- 0
-
-X <- as.matrix(cbind(1, dat$x1))
-Z <- as.matrix(cbind(1, dat[,c("x1", "x2")]))
-beta <-  as.numeric(res$estimate[4:5])
-gamma <- as.numeric(res$estimate[1:3])
-sigma <- as.numeric(res$estimate[6])
-rho <- res$estimate[7]
-thresholds <- bound
-boundaries = bound
-
-
-
-
-
-
-
-
-selection_model <- sampleSelection::selection( yS ~ x1 + x2, yO ~ x1, data = dat, boundaries = bound )
-
-start <- toto( yS ~ x1 + x2, yO ~ x1, data = dat, boundaries = bound )
-
-
-
-head(
-  grad_llk_selection(y, selection_model$estimate[4:5], X,
-                     selection_model$estimate[1:3], Z,
-                     thresholds, selection_model$estimate["atanhRho"], selection_model$estimate['logSigma'])
-)
-
-head(
-  selection_model$gradientObs
-)
-
-theta <- c(beta, gamma, rho, sigma)
-
-opt <- maxLik::maxLik(
+opt_maxLik <- maxLik::maxLik(
   llk_selection_wrapper,
   grad = grad_llk_selection_wrapper,
   hess = NULL,
-  start = startVal,
-  y = y, X = X, Z = Z, thresholds = thresholds
+  method = "BHHH",
+  start = selection_model$start,
+  y = dat$y_outcome,
+  y_selection = dat$y,
+  X = as.matrix(fitInput$X), Z = as.matrix(fitInput$Z),
+  thresholds = bound
 )
+
+testthat::test_that("maxLik optimization consistent with sampleSelection output", {
+
+  testthat::expect_equal(
+    opt_maxLik$maximum,
+    selection_model$maximum
+  )
+  testthat::expect_equal(
+    opt_maxLik$estimate,
+    selection_model$estimate
+  )
+  testthat::expect_equal(
+    opt_maxLik$gradient,
+    selection_model$gradient
+  )
+  testthat::expect_equal(
+    opt_maxLik$hessian,
+    selection_model$hessian
+  )
+  testthat::expect_equal(
+    opt_maxLik$code,
+    selection_model$code
+  )
+  testthat::expect_equal(
+    opt_maxLik$message,
+    selection_model$message
+  )
+  testthat::expect_equal(
+    opt_maxLik$iterations,
+    selection_model$iterations
+  )
+  testthat::expect_equal(
+    opt_maxLik$type,
+    selection_model$type
+  )
+  testthat::expect_equal(
+    opt_maxLik$gradientObs,
+    selection_model$gradientObs
+  )
+  testthat::expect_equal(
+    opt_maxLik$objectiveFn,
+    llk_selection_wrapper
+  )
+}
+)
+
 
 

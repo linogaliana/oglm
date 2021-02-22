@@ -156,8 +156,8 @@ oglmx.fit2 <-function(y,y_selection,X,Z,thresholds,start,
 
   result <- maxLik::maxLik(
     llk_selection_wrapper,
-    grad = grad_llk_selection_wrapper,
-    hess = NULL,
+    # grad = grad_llk_selection_wrapper,
+    # hess = NULL,
     start = start_algo,
     y = y, y_selection = y_selection,
     X = X, Z = Z, thresholds = thresholds

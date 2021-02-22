@@ -37,22 +37,19 @@ llk_selection <- function(y, y_selection, beta, X, gamma, Z,
 }
 
 
-grad_llk_selection_wrapper <- function(theta, y, y_selection,
-                                       X, Z, thresholds){
-  # order: theta = (gamma, beta, sigma, rho)
-  gamma <- theta[1:ncol(Z)]
-  beta <- theta[seq(from = ncol(Z) + 1,
-                     length.out = ncol(X))]
-  sigma <- theta[ncol(X) + ncol(Z) + 1]
-  rho <- theta[ncol(X) + ncol(Z) + 2]
-  return(
-    grad_llk_selection(y, y_selection, beta, X, gamma, Z,
-                       thresholds, rho, sigma)
-  )
-}
 
-llk_selection_wrapper <- function(theta, y, y_selection,
-                                  X, Z, thresholds){
+llk_selection_wrapper <- function(theta, ...
+                                  # y, y_selection,
+                                  # X, Z, thresholds
+                                  ){
+
+  args <- list(...)
+  Z <- args[["Z"]]
+  X <- args[["X"]]
+  y <- args[["y"]]
+  y_selection <- args[["y_selection"]]
+  thresholds <- args[["thresholds"]]
+
   # order: theta = (gamma, beta, sigma, rho)
   gamma <- theta[1:ncol(Z)]
   beta <- theta[seq(from = ncol(Z) + 1,
@@ -60,8 +57,11 @@ llk_selection_wrapper <- function(theta, y, y_selection,
   sigma <- theta[ncol(X) + ncol(Z) + 1]
   rho <- theta[ncol(X) + ncol(Z) + 2]
   return(
-    llk_selection(y, y_selection, beta, X, gamma, Z,
-                  thresholds, rho, sigma)
+    llk_selection(y = y, y_selection = y_selection, beta = beta,
+                  X = X, gamma = gamma, Z = Z,
+                  thresholds = thresholds,
+                  rho = rho,
+                  sigma = sigma)
   )
 }
 
@@ -124,6 +124,33 @@ grad_llk_selection <- function(y, y_selection,
 
 
   return(grad)
+}
+
+
+grad_llk_selection_wrapper <- function(theta, ...
+                                       # y, y_selection,
+                                       # X, Z, thresholds
+                                       ){
+  # order: theta = (gamma, beta, sigma, rho)
+  args <- list(...)
+  Z <- args[["Z"]]
+  X <- args[["X"]]
+  y <- args[["y"]]
+  y_selection <- args[["y_selection"]]
+  thresholds <- args[["thresholds"]]
+
+  gamma <- theta[1:ncol(Z)]
+  beta <- theta[seq(from = ncol(Z) + 1,
+                    length.out = ncol(X))]
+  sigma <- theta[ncol(X) + ncol(Z) + 1]
+  rho <- theta[ncol(X) + ncol(Z) + 2]
+  return(
+    grad_llk_selection(y = y, y_selection = y_selection, beta = beta,
+                       X = X, gamma = gamma, Z = Z,
+                       thresholds = thresholds,
+                       rho = rho,
+                       sigma = sigma)
+  )
 }
 
 

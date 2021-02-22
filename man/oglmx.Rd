@@ -7,6 +7,7 @@
 oglmx(
   formulaMEAN,
   formulaSD = NULL,
+  selection = NULL,
   data,
   start = NULL,
   weights = NULL,
@@ -26,7 +27,8 @@ oglmx(
   optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM"),
   tol = 1e-20,
   start_method = c("default", "search"),
-  search_iter = 10
+  search_iter = 10,
+  return_envir = FALSE
 )
 }
 \arguments{
