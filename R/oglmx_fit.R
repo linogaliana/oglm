@@ -154,13 +154,17 @@ oglmx.fit2 <-function(y,y_selection,X,Z,thresholds,start,
   if (is.finite(min(thresholds))) thresholds <- c(-Inf, thresholds)
   if (is.finite(max(thresholds))) thresholds <- c(thresholds, Inf)
 
+
   result <- maxLik::maxLik(
     llk_selection_wrapper,
-    # grad = grad_llk_selection_wrapper,
-    # hess = NULL,
+    grad = grad_llk_selection_wrapper,
+    hess = NULL,
+    method = "BHHH",
     start = start_algo,
-    y = y, y_selection = y_selection,
-    X = X, Z = Z, thresholds = thresholds
+    y = y,
+    y_selection = y_selection,
+    X = X, Z = Z,
+    thresholds = thresholds
   )
 
   result$start <- start_algo
