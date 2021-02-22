@@ -16,3 +16,14 @@ vcov.oglmx<-function(object,tol=1e-20,...){
   colnames(vcov)<-rownames(vcov)<-names(object$coefficients)
   return(vcov)
 }
+
+#' Calculate Variance-Covariance Matrix for a Fitted Model Object
+#' Returns the variance-covariance matrix of the main parameters of a
+#'   fitted model object of class `oglm`.See \link[stats]{vcov} for
+#'   more details
+#' @inheritParams stats::vcov
+#' @export
+
+vcov.oglmx.selection <-function(object, ...){
+  return(object$vcov)
+}

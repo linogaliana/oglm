@@ -278,36 +278,45 @@ testthat::test_that("oglm master function consistent with sampleSelection output
     as.numeric(selection_model$estimate)
   )
   testthat::expect_equal(
-    opt_maxLik$gradient,
+    output_oglm$gradient,
     selection_model$gradient
   )
   testthat::expect_equal(
-    opt_maxLik$hessian,
+    output_oglm$hessian,
     selection_model$hessian
   )
   testthat::expect_equal(
-    opt_maxLik$code,
+    output_oglm$code,
     selection_model$code
   )
   testthat::expect_equal(
-    opt_maxLik$message,
+    output_oglm$message,
     selection_model$message
   )
   testthat::expect_equal(
-    opt_maxLik$iterations,
+    output_oglm$iterations,
     selection_model$iterations
   )
   testthat::expect_equal(
-    opt_maxLik$type,
+    output_oglm$type,
     selection_model$type
   )
   testthat::expect_equal(
-    opt_maxLik$gradientObs,
+    output_oglm$gradientObs,
     selection_model$gradientObs
   )
   testthat::expect_equal(
-    opt_maxLik$objectiveFn,
+    output_oglm$objectiveFn,
     llk_selection_wrapper
   )
 }
 )
+
+
+testthat::test_that("Variance-covariance matrix is the same", {
+  testthat::expect_equal(
+    output_oglm$vcov,
+    selection_model$vcovAll,
+    check.attributes = FALSE
+  )
+})
