@@ -442,21 +442,21 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
 
 
   if (!is.null(selection)){
-    names(result$estimate) <- c(colnames(Z), colnames(X), "log(sigma)", "atanhRho")
-    result$coefAll <- c(result$estimate, sigma = unname(exp(result$estimate["log(sigma)"])),
-                        sigmaSq = unname(exp(2 * result$estimate["log(sigma)"])),
-                        rho = unname(tanh(result$estimate["atanhRho"])))
-    jac <- cbind(diag(length(result$estimate)), matrix(0, length(result$estimate),
+    names(results$estimate) <- c(colnames(Z), colnames(X), "log(sigma)", "atanhRho")
+    results$coefAll <- c(results$estimate, sigma = unname(exp(results$estimate["log(sigma)"])),
+                        sigmaSq = unname(exp(2 * results$estimate["log(sigma)"])),
+                        rho = unname(tanh(results$estimate["atanhRho"])))
+    jac <- cbind(diag(length(results$estimate)), matrix(0, length(results$estimate),
                                                        3))
-    rownames(jac) <- names(result$estimate)
-    colnames(jac) <- c(names(result$estimate), "sigma", "sigmaSq",
+    rownames(jac) <- names(results$estimate)
+    colnames(jac) <- c(names(results$estimate), "sigma", "sigmaSq",
                        "rho")
-    jac["log(sigma)", "sigma"] <- exp(result$estimate["log(sigma)"])
-    jac["log(sigma)", "sigmaSq"] <- 2 * exp(2 * result$estimate["log(sigma)"])
-    jac["atanhRho", "rho"] <- 1 - (tanh(result$estimate["atanhRho"]))^2
-    result$vcov <- t(jac) %*% vcov(result) %*% jac
+    jac["log(sigma)", "sigma"] <- exp(results$estimate["log(sigma)"])
+    jac["log(sigma)", "sigmaSq"] <- 2 * exp(2 * results$estimate["log(sigma)"])
+    jac["atanhRho", "rho"] <- 1 - (tanh(results$estimate["atanhRho"]))^2
+    results$vcov <- t(jac) %*% vcov(results) %*% jac
     class(results) <- c("oglmx.selection",class(results))
-    return(result)
+    return(results)
 
   } else{
     results$vcov <- vcov(results,tol=tol)
