@@ -248,8 +248,7 @@ fit_output <- oglmx.fit2(y = dat$y_outcome,
                          y_selection = dat$y,
                          X = as.matrix(fitInput$X), Z = as.matrix(fitInput$Z),
                          start = selection_model$start,
-                         thresholds = bound,
-                         start)
+                         thresholds = bound)
 
 opt_maxLik$start <- selection_model$start
 
@@ -261,5 +260,54 @@ testthat::test_that("Wrapper does not change anything", {
 })
 
 
-#
+# integration in oglm ------------------------
 
+
+output_oglm <- oglm::oglmx(selection = "y ~ x1 + x2", yO ~ x1, data = dat,
+                        threshparam = c(-Inf, 5, 15, Inf))
+
+
+testthat::test_that("oglm master function consistent with sampleSelection output", {
+
+  testthat::expect_equal(
+    output_oglm$maximum,
+    selection_model$maximum
+  )
+  testthat::expect_equal(
+    as.numeric(output_oglm$estimate),
+    as.numeric(selection_model$estimate)
+  )
+  testthat::expect_equal(
+    opt_maxLik$gradient,
+    selection_model$gradient
+  )
+  testthat::expect_equal(
+    opt_maxLik$hessian,
+    selection_model$hessian
+  )
+  testthat::expect_equal(
+    opt_maxLik$code,
+    selection_model$code
+  )
+  testthat::expect_equal(
+    opt_maxLik$message,
+    selection_model$message
+  )
+  testthat::expect_equal(
+    opt_maxLik$iterations,
+    selection_model$iterations
+  )
+  testthat::expect_equal(
+    opt_maxLik$type,
+    selection_model$type
+  )
+  testthat::expect_equal(
+    opt_maxLik$gradientObs,
+    selection_model$gradientObs
+  )
+  testthat::expect_equal(
+    opt_maxLik$objectiveFn,
+    llk_selection_wrapper
+  )
+}
+)

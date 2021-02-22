@@ -423,7 +423,7 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
     FitInput<-append(list(outcomeMatrix=outcomeMatrix,X=X,Z=Z,w=weights,beta=beta,delta=delta,threshparam=threshparam,
                           start=start,optmeth=optmeth, start_method = start_method, search_iter = search_iter),fitinput)
   } else{
-    FitInput<- list(y=Y,y_selection = y_selection,outcomeMatrix=outcomeMatrix, X=X,Z=Z,thresholds=threshparam,
+    FitInput<- list(y=Y,y_selection = y_selection, X=X,Z=Z,thresholds=threshparam,
                     start=start,optmeth=optmeth, start_method = start_method, search_iter = search_iter)
   }
   if (return_envir) return(FitInput)
@@ -432,17 +432,18 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
     results<-append(oglmxoutput,do.call("oglmx.fit",FitInput))
   } else{
     results<-append(oglmxoutput,do.call("oglmx.fit2", FitInput))
+    results$loglikelihood <- results$maximum
   }
 
+  attr(results$loglikelihood,"No.Obs") <- length(Y)
 
-  attr(results$loglikelihood,"No.Obs")<-length(Y)
 
   class(results)<-"oglmx"
 
 
   if (!is.null(selection)){
-    names(result$estimate) <- c(colnames(X), colnames(Z), "atanhRho" ,"log(sigma)")
-    result$coefAll <- c(result$estimate, sigma = unname(exp(result$estimate["logSigma"])),
+    names(result$estimate) <- c(colnames(Z), colnames(X), "log(sigma)", "atanhRho")
+    result$coefAll <- c(result$estimate, sigma = unname(exp(result$estimate["log(sigma)"])),
                         sigmaSq = unname(exp(2 * result$estimate["log(sigma)"])),
                         rho = unname(tanh(result$estimate["atanhRho"])))
     jac <- cbind(diag(length(result$estimate)), matrix(0, length(result$estimate),
