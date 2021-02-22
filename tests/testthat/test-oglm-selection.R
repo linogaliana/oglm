@@ -241,3 +241,25 @@ testthat::test_that("maxLik optimization consistent with sampleSelection output"
 
 
 
+# oglm.fit2 function ------------------------
+
+
+fit_output <- oglmx.fit2(y = dat$y_outcome,
+                         y_selection = dat$y,
+                         X = as.matrix(fitInput$X), Z = as.matrix(fitInput$Z),
+                         start = selection_model$start,
+                         thresholds = bound,
+                         start)
+
+opt_maxLik$start <- selection_model$start
+
+testthat::test_that("Wrapper does not change anything", {
+  testthat::expect_equal(
+    fit_output,
+    opt_maxLik
+  )
+})
+
+
+#
+
