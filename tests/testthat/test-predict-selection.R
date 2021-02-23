@@ -65,6 +65,12 @@ testthat::test_that("unconditional expectations", {
     predict(oglm_model, type = "E[y|X,y>0]", newdata = dat)
   )
 })
+testthat::test_that("conditional expectations for outcome", {
+  testthat::expect_equal(
+    predict(selection_model, type = "conditional", part = "outcome")[isTRUE(dat$yS)],
+    predict(oglm_model, type = "E[y|X,Z]", newdata = dat)[isTRUE(dat$yS)]
+  )
+})
 
 
 

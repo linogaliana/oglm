@@ -187,7 +187,7 @@ predict.oglmx <- function(object, newdata = NULL, type = c("class", "probs","lat
 
 #' @export
 predict.oglmx.selection <- function(object, newdata = NULL,
-                                    type = c("class", "probs","latent","xb", "E[y|X]", "P[y == 0|Z]", "E[y|X,y>0]"),
+                                    type = c("class", "probs","latent","xb", "E[y|X]", "P[y == 0|Z]", "E[y|X,y>0]", "E[y|X,Z]"),
                                     model = c("both", "outcome", "selection"),
                                     ...){
 
@@ -279,15 +279,17 @@ predict.oglmx.selection <- function(object, newdata = NULL,
 
   x_params <- object$params$outcome
   z_params <- object$params$selection
-  error_params <- which(names(coeff_list) %in% c("sigma", "rho"))
 
   beta <- coeff_list[x_params]
   gamma <- coeff_list[z_params]
+  rho <- as.numeric(coeff_list['rho'])
+  sigma <- as.numeric(coeff_list['sigma'])
 
   zhat <- drop(Z %*% gamma)
-
   xhat <- drop(X %*% beta)
   if (type == "E[y|X,y>0]") xhat[y_selection == 0] <- NA
+
+
 
   epsilon_distribution <- switch(object$link, logit = rlogis, probit = rnorm,
                                  loglog = rgumbel, cloglog = rGumbel, cauchit = rcauchy)
@@ -301,7 +303,14 @@ predict.oglmx.selection <- function(object, newdata = NULL,
                                                      "gammaZ" = zhat))
   if ((type == "probs" && model == "selection") || (type == "P[y == 0|Z]")) return(cumulative_distribution(zhat))
 
+  if (type == "E[y|X,Z]") return(
+    cbind("E[y|X,Z,y == 0]" = xhat - rho*sigma*inverse_mills_ratio(-zhat),
+          "E[y|X,Z,y > 0]" = xhat + rho*sigma*inverse_mills_ratio(zhat)
+    )
+  )
 
+  # PROBS WHEN USING BOTH OR SELECTION ----------------
+  # must account for the error terms correlation
 
   rho_matrix <- matrix(c(1, -rho, -rho, 1), nrow = 2)
 
