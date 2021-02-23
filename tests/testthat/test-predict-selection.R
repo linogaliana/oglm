@@ -29,7 +29,7 @@ table( dat$yO )
 
 selection_model <- sampleSelection::selection( yS ~ x1 + x2, yO ~ x1, data = dat, boundaries = bound,
                                                ys = TRUE, xs = TRUE, yo = TRUE, xo = TRUE)
-oglm_model <- oglm::oglmx(selection = "y ~ x1 + x2", yO ~ x1, data = dat,
+oglm_model <- oglm::oglmx(selection = "yS ~ x1 + x2", yO ~ x1, data = dat,
                            threshparam = c(-Inf, 5, 15, Inf),
                            start = selection_model$start)
 
@@ -73,5 +73,16 @@ testthat::test_that("conditional expectations for outcome", {
 })
 
 
+testthat::test_that("predict if selected observation", {
+  testthat::expect_equal(
+    as.numeric(predict(oglm_model, type = "P[y == 0|Z]", newdata = dat) > 0.5),
+    as.numeric(predict(oglm_model, type = "class", model = "selection", newdata = dat))
+  )
+  testthat::expect_equal(
+    as.numeric(predict(oglm_model, type = "P[y == 0|Z]", newdata = dat) > 0.1),
+    as.numeric(predict(oglm_model, type = "class", model = "selection", newdata = dat,
+                       threshold_proba_selection = .1))
+  )
 
+})
 

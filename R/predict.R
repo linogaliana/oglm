@@ -189,6 +189,7 @@ predict.oglmx <- function(object, newdata = NULL, type = c("class", "probs","lat
 predict.oglmx.selection <- function(object, newdata = NULL,
                                     type = c("class", "probs","latent","xb", "E[y|X]", "P[y == 0|Z]", "E[y|X,y>0]", "E[y|X,Z]"),
                                     model = c("both", "outcome", "selection"),
+                                    threshold_proba_selection = .5,
                                     ...){
 
   # CHECK IF oglmx OBJECT
@@ -293,7 +294,7 @@ predict.oglmx.selection <- function(object, newdata = NULL,
 
   epsilon_distribution <- switch(object$link, logit = rlogis, probit = rnorm,
                                  loglog = rgumbel, cloglog = rGumbel, cauchit = rcauchy)
-  cumulative_distribution <- switch(object$link, logit = plogis, probit = pnorm,
+  pfun <- switch(object$link, logit = plogis, probit = pnorm,
                                  loglog = pgumbel, cloglog = pGumbel, cauchit = pcauchy)
 
 
@@ -301,7 +302,7 @@ predict.oglmx.selection <- function(object, newdata = NULL,
   if ((type == "xb" && model == "selection")) return(zhat)
   if ((type == "xb" && model == "both")) return(list("E[y|X]" = xhat,
                                                      "gammaZ" = zhat))
-  if ((type == "probs" && model == "selection") || (type == "P[y == 0|Z]")) return(cumulative_distribution(zhat))
+  if ((type == "probs" && model == "selection") || (type == "P[y == 0|Z]")) return(pfun(zhat))
 
   if (type == "E[y|X,Z]") return(
     cbind("E[y|X,Z,y == 0]" = xhat - rho*sigma*inverse_mills_ratio(-zhat),
@@ -309,8 +310,16 @@ predict.oglmx.selection <- function(object, newdata = NULL,
     )
   )
 
+  if ((type == "class") && (model != "outcome")){
+    class_selection <- as.numeric(pfun(zhat)>threshold_proba_selection)
+    if (model == "selection") return(class_selection)
+  }
+
+
   # PROBS WHEN USING BOTH OR SELECTION ----------------
   # must account for the error terms correlation
+
+
 
   rho_matrix <- matrix(c(1, -rho, -rho, 1), nrow = 2)
 
