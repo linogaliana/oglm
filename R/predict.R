@@ -229,13 +229,13 @@ predict.oglmx.selection <- function(object, newdata = NULL,
 
   # Covariates matrix
   mo <- model.frame(Terms_outcome, newdata, na.action = function(x) x,
-                   xlev = object$factorvars)
+                    xlev = object$factorvars)
   ms <- model.frame(Terms_selection, newdata, na.action = function(x) x,
                     xlev = object$factorvars)
 
   # selection
   y_selection <- model.response(model.frame(object$terms_selection,
-                             newdata, na.action = function(x) x))
+                                            newdata, na.action = function(x) x))
 
 
   # Check factors are ok
@@ -295,7 +295,7 @@ predict.oglmx.selection <- function(object, newdata = NULL,
   epsilon_distribution <- switch(object$link, logit = rlogis, probit = rnorm,
                                  loglog = rgumbel, cloglog = rGumbel, cauchit = rcauchy)
   pfun <- switch(object$link, logit = plogis, probit = pnorm,
-                                 loglog = pgumbel, cloglog = pGumbel, cauchit = pcauchy)
+                 loglog = pgumbel, cloglog = pGumbel, cauchit = pcauchy)
 
 
   if ((type == "xb" && model == "outcome") || (type %in% c("E[y|X]", "E[y|X,y>0]"))) return(xhat)
@@ -316,11 +316,41 @@ predict.oglmx.selection <- function(object, newdata = NULL,
   }
 
 
-  # PROBS WHEN USING BOTH OR SELECTION ----------------
+  # # Transform from latent space y = x*beta to probabilities
+  # eta <- drop(beta[names(beta) != "(Intercept)"] %*% X[,colnames(X) != "(Intercept)"])
+  # cumpr <- matrix(pfun(matrix(object$allparams$threshparam, n, q, byrow = TRUE) -
+  #                        eta), , q)
+  #
+  # # CREATE PREDICTION
+  # # ---------------------------------
+  #
+  # Y <- t(apply(cumpr, 1L, function(x) diff(c(0, x, 1))))
+  # dimnames(Y) <- list(rownames(X), object$Outcomes)
+  #
+  #
+  # if (missing(newdata) && !is.null(object$na.action)){
+  #   Y <- napredict(object$na.action, Y)
+  # }
+  #
+  #
+  # if (type == "class"){
+  #   class_outcome <- factor(max.col(Y), levels = seq_along(object$Outcomes),
+  #                           labels = object$Outcomes)
+  #   if (model == "outcome") return(class_outcome)
+  #   return(list("selection" = class_selection,
+  #               "outcome" = class_outcome))
+  # } else if (type == "probs") {
+  #   probs_outcome <- drop(Y)
+  #   if (model == "outcome") return(probs_outcome)
+  #   return(list("selection" = pfun(zhat),
+  #               "outcome" = probs_outcome))
+  # }
+  #
+
+
+  # LATENT ----------------
   # must account for the error terms correlation
 
 
-
-  rho_matrix <- matrix(c(1, -rho, -rho, 1), nrow = 2)
 
 }
