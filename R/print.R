@@ -50,6 +50,7 @@ print.oglmx <- function(x, digits = max(3L, getOption("digits") - 3L),
 
 }
 
+#' @export
 
 print.oglmx.selection <- function(x, digits = max(3L, getOption("digits") - 3L),
                         ...){
