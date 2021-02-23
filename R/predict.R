@@ -186,7 +186,8 @@ predict.oglmx <- function(object, newdata = NULL, type = c("class", "probs","lat
 
 
 #' @export
-predict.oglmx.selection <- function(object, newdata = NULL, type = c("class", "probs","latent","xb"),
+predict.oglmx.selection <- function(object, newdata = NULL,
+                                    type = c("class", "probs","latent","xb", "E[y|X]", "P[y == 0|Z]", "E[y|X,y>0]"),
                                     model = c("both", "outcome", "selection"),
                                     ...){
 
@@ -218,34 +219,46 @@ predict.oglmx.selection <- function(object, newdata = NULL, type = c("class", "p
   # --------------------------------------------------
 
   # Transform formula in terms
-  object$terms <- terms(as.formula(formula_outcome))
+  object$terms_outcome <- terms(as.formula(formula_outcome))
+  object$terms_selection <- terms(as.formula(formula_selection))
 
   # Keep only covariates
-  Terms <- delete.response(object$terms)
+  Terms_outcome <- delete.response(object$terms_outcome)
+  Terms_selection <- delete.response(object$terms_selection)
 
   # Covariates matrix
-  m <- model.frame(Terms, newdata, na.action = function(x) x,
+  mo <- model.frame(Terms_outcome, newdata, na.action = function(x) x,
                    xlev = object$factorvars)
+  ms <- model.frame(Terms_selection, newdata, na.action = function(x) x,
+                    xlev = object$factorvars)
+
+  # selection
+  y_selection <- model.response(model.frame(object$terms_selection,
+                             newdata, na.action = function(x) x))
+
 
   # Check factors are ok
-  if (!is.null(cl <- attr(Terms, "dataClasses")))
-    .checkMFClasses(cl, m)
+  if (!is.null(cl <- attr(Terms_outcome, "dataClasses")))
+    .checkMFClasses(cl, mo)
+  if (!is.null(cl <- attr(Terms_selection, "dataClasses")))
+    .checkMFClasses(cl, ms)
 
-  X <- model.matrix(Terms, m, contrasts = object$contrasts)
+  X <- model.matrix(Terms_outcome, mo, contrasts = object$contrasts)
+  Z <- model.matrix(Terms_selection, ms, contrasts = object$contrasts)
 
-  xnocol <- match(names(object$coefficients),
-                  colnames(X),
-                  nomatch = 0L)
-  if (length(xnocol)>0L){
-    X2 <- X[, xnocol]
-  }
-
-
-  # Finalize covariates matrix by removing intercept
-  xint <- match("(Intercept)", colnames(X), nomatch = 0L)
-  if (xint > 0L){
-    X <- X[, -xint, drop = FALSE]
-  }
+  # xnocol <- match(names(object$coefficients),
+  #                 colnames(X),
+  #                 nomatch = 0L)
+  # if (length(xnocol)>0L){
+  #   X2 <- X[, xnocol]
+  # }
+  #
+  #
+  # # Finalize covariates matrix by removing intercept
+  # xint <- match("(Intercept)", colnames(X), nomatch = 0L)
+  # if (xint > 0L){
+  #   X <- X[, -xint, drop = FALSE]
+  # }
 
   # Parameters for logistic/normal/... distribution
   n <- nrow(X)
@@ -255,6 +268,41 @@ predict.oglmx.selection <- function(object, newdata = NULL, type = c("class", "p
   # MAKE PREDICTION
   # -------------------------------
 
+  coeff_list <- object$coefAll
 
+  # REMOVE THRESHOLD COEFFICIENTS
+  if (sum(grepl("Threshold", names(coeff_list)))>0){
+    coeff <- coeff_list[-grep("Threshold", names(coeff_list))]
+  }else{
+    coeff <- coeff_list
+  }
+
+  x_params <- object$params$outcome
+  z_params <- object$params$selection
+  error_params <- which(names(coeff_list) %in% c("sigma", "rho"))
+
+  beta <- coeff_list[x_params]
+  gamma <- coeff_list[z_params]
+
+  zhat <- drop(Z %*% gamma)
+
+  xhat <- drop(X %*% beta)
+  if (type == "E[y|X,y>0]") xhat[y_selection == 0] <- NA
+
+  epsilon_distribution <- switch(object$link, logit = rlogis, probit = rnorm,
+                                 loglog = rgumbel, cloglog = rGumbel, cauchit = rcauchy)
+  cumulative_distribution <- switch(object$link, logit = plogis, probit = pnorm,
+                                 loglog = pgumbel, cloglog = pGumbel, cauchit = pcauchy)
+
+
+  if ((type == "xb" && model == "outcome") || (type %in% c("E[y|X]", "E[y|X,y>0]"))) return(xhat)
+  if ((type == "xb" && model == "selection")) return(zhat)
+  if ((type == "xb" && model == "both")) return(list("E[y|X]" = xhat,
+                                                     "gammaZ" = zhat))
+  if ((type == "probs" && model == "selection") || (type == "P[y == 0|Z]")) return(cumulative_distribution(zhat))
+
+
+
+  rho_matrix <- matrix(c(1, -rho, -rho, 1), nrow = 2)
 
 }
