@@ -17,6 +17,9 @@
 #' @param formulaSD either `NULL` (homoskedastic model) or an object
 #'   of class \link[stats]{formula}: a symbolic description of
 #'   the model used to explain the variance of the latent variable.
+#' @param selection Formula for Heckman selection model. If `NULL` (default),
+#'   assuming no selection on observables
+#'   (introduced in [#11](https://github.com/linogaliana/oglm/pull/11))
 #' @param data a data frame containing the variables in the model.
 #' @param start either `NULL` or a numeric vector specifying
 #'   start values for each of the estimated parameters,
@@ -86,7 +89,11 @@
 #'   standard errors will be calculated using the sandwich estimator
 #'   by default when calling `summary`.
 #' @param optmeth specifies a method for the maximisation of the likelihood
-#'   passed to [maxLik::maxLik()]. Default to *NR* (Newton-Raphson)
+#'   passed to [maxLik::maxLik()]. Default to *NR* (Newton-Raphson) when
+#'   no selection is introduced. Forced to *BHHH* when selection on observables
+#'   is introduced.
+#' @param return_envir Logical indicating whether we want to stop early and
+#'   return objects used to fit the model
 #' @param tol Argument passed to [qr.solve], defines the tolerance
 #' for detecting linear dependencies in the hessian matrix to be inverted.
 #' @inheritParams stats::glm
@@ -364,7 +371,7 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
     oglmxoutput$selection<-TRUE
   }
 
-  oglmxoutput$formula<-list(meaneq=formulaMEAN,sdeq=formulaSD)
+  oglmxoutput$formula<-list(meaneq=formulaMEAN,sdeq=formulaSD,selection=selection)
 
   # beta
   if (!is.null(beta) & length(beta)==1){

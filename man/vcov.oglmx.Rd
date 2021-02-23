@@ -15,6 +15,9 @@ more details}
     \code{\link{summary}()} object of such a fitted model.
   }
 
+\item{tol}{Argument passed to \link{qr.solve}, defines the tolerance
+for detecting linear dependencies in the hessian matrix to be inverted.}
+
 \item{...}{
     additional arguments for method functions.  For the
     \code{\link[stats]{glm}} method this can be used to pass a

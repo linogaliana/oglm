@@ -43,6 +43,10 @@ levels of the factor have ordinal meaning.}
 of class \link[stats]{formula}: a symbolic description of
 the model used to explain the variance of the latent variable.}
 
+\item{selection}{Formula for Heckman selection model. If \code{NULL} (default),
+assuming no selection on observables
+(introduced in \href{https://github.com/linogaliana/oglm/pull/11}{#11})}
+
 \item{data}{a data frame containing the variables in the model.}
 
 \item{start}{either \code{NULL} or a numeric vector specifying
@@ -136,7 +140,9 @@ standard errors will be calculated using the sandwich estimator
 by default when calling \code{summary}.}
 
 \item{optmeth}{specifies a method for the maximisation of the likelihood
-passed to \code{\link[maxLik:maxLik]{maxLik::maxLik()}}. Default to \emph{NR} (Newton-Raphson)}
+passed to \code{\link[maxLik:maxLik]{maxLik::maxLik()}}. Default to \emph{NR} (Newton-Raphson) when
+no selection is introduced. Forced to \emph{BHHH} when selection on observables
+is introduced.}
 
 \item{tol}{Argument passed to \link{qr.solve}, defines the tolerance
 for detecting linear dependencies in the hessian matrix to be inverted.}
@@ -144,6 +150,9 @@ for detecting linear dependencies in the hessian matrix to be inverted.}
 \item{start_method}{Should we use default intiial value or search for a better one ?}
 
 \item{search_iter}{Number of values to look for when using \emph{start_method = 'search'}}
+
+\item{return_envir}{Logical indicating whether we want to stop early and
+return objects used to fit the model}
 }
 \value{
 An object of class "\code{oglmx}" with the following components:

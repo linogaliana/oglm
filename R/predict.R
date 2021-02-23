@@ -21,7 +21,7 @@
 #' @export
 
 
-predict.oglmx <- function (object, newdata = NULL, type = c("class", "probs","latent","xb"), ...){
+predict.oglmx <- function(object, newdata = NULL, type = c("class", "probs","latent","xb"), ...){
 
   # CHECK IF oglmx OBJECT
   # --------------------------
@@ -182,4 +182,79 @@ predict.oglmx <- function (object, newdata = NULL, type = c("class", "probs","la
     return(list("xb" = eta - simulated_epsilon, "y_latent_pred" = eta,
                 "sigma_vector" = sigma_vector))
   }
+}
+
+
+#' @export
+predict.oglmx.selection <- function(object, newdata = NULL, type = c("class", "probs","latent","xb"),
+                                    model = c("both", "outcome", "selection"),
+                                    ...){
+
+  # CHECK IF oglmx OBJECT
+  # --------------------------
+  if (!inherits(object, "oglmx")) stop("not a \"oglmx\" object")
+
+
+  # CHECK PREDICTION TYPE
+  # --------------------------
+  type <- match.arg(type)
+  model <- match.arg(model)
+
+
+  # FIT IF missing(newdata)
+  # ---------------------------
+
+  if (missing(newdata)){
+    #Y <- object$fitted
+    stop('fit method not yet implemented: use predict')
+  }
+
+  newdata <- as.data.frame(newdata)
+  formula_outcome <- object$formula$`meaneq`
+  formula_selection <- object$formula$`meaneq`
+
+
+  # CREATE TERMS TO REPLICATE MASS::predict.polr BEHAVIOR
+  # --------------------------------------------------
+
+  # Transform formula in terms
+  object$terms <- terms(as.formula(formula))
+
+  # Keep only covariates
+  Terms <- delete.response(object$terms)
+
+  # Covariates matrix
+  m <- model.frame(Terms, newdata, na.action = function(x) x,
+                   xlev = object$factorvars)
+
+  # Check factors are ok
+  if (!is.null(cl <- attr(Terms, "dataClasses")))
+    .checkMFClasses(cl, m)
+
+  X <- model.matrix(Terms, m, contrasts = object$contrasts)
+
+  xnocol <- match(names(object$coefficients),
+                  colnames(X),
+                  nomatch = 0L)
+  if (length(xnocol)>0L){
+    X2 <- X[, xnocol]
+  }
+
+
+  # Finalize covariates matrix by removing intercept
+  xint <- match("(Intercept)", colnames(X), nomatch = 0L)
+  if (xint > 0L){
+    X <- X[, -xint, drop = FALSE]
+  }
+
+  # Parameters for logistic/normal/... distribution
+  n <- nrow(X)
+  q <- length(object$allparams$threshparam)
+
+
+  # MAKE PREDICTION
+  # -------------------------------
+
+
+
 }

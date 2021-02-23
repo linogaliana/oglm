@@ -5,6 +5,7 @@
 #'
 #' @inheritParams stats::vcov
 #' @inheritParams qr.solve
+#' @inheritParams oglmx
 #' @export
 
 vcov.oglmx<-function(object,tol=1e-20,...){

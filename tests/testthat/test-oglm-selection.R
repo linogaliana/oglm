@@ -246,27 +246,28 @@ testthat::test_that("maxLik optimization consistent with sampleSelection output"
 # oglm.fit2 function ------------------------
 
 
-fit_output <- oglmx.fit2(y = dat$y_outcome,
-                         y_selection = dat$y,
-                         X = as.matrix(fitInput$X), Z = as.matrix(fitInput$Z),
-                         start = selection_model$start,
-                         thresholds = bound)
-
-opt_maxLik$start <- selection_model$start
-
-testthat::test_that("Wrapper does not change anything", {
-  testthat::expect_equal(
-    fit_output,
-    opt_maxLik
-  )
-})
+# fit_output <- oglmx.fit2(y = dat$y_outcome,
+#                          y_selection = dat$y,
+#                          X = as.matrix(fitInput$X), Z = as.matrix(fitInput$Z),
+#                          start = selection_model$start,
+#                          thresholds = bound)
+#
+# opt_maxLik$start <- selection_model$start
+#
+# testthat::test_that("Wrapper does not change anything", {
+#   testthat::expect_equal(
+#     fit_output,
+#     opt_maxLik
+#   )
+# })
 
 
 # integration in oglm ------------------------
 
 
 output_oglm <- oglm::oglmx(selection = "y ~ x1 + x2", yO ~ x1, data = dat,
-                        threshparam = c(-Inf, 5, 15, Inf))
+                           threshparam = c(-Inf, 5, 15, Inf),
+                           start = selection_model$start)
 
 
 testthat::test_that("oglm master function consistent with sampleSelection output", {
@@ -277,15 +278,19 @@ testthat::test_that("oglm master function consistent with sampleSelection output
   )
   testthat::expect_equal(
     as.numeric(output_oglm$estimate),
-    as.numeric(selection_model$estimate)
+    as.numeric(selection_model$estimate)#,
+    #    tolerance = 1e-4
   )
   testthat::expect_equal(
-    output_oglm$gradient,
-    selection_model$gradient
+    as.numeric(output_oglm$gradient),
+    as.numeric(selection_model$gradient)#,
+    #    tolerance = 1e-3
   )
   testthat::expect_equal(
     output_oglm$hessian,
-    selection_model$hessian
+    selection_model$hessian,
+    check.attributes = FALSE#,
+    #    tolerance = 1e-3
   )
   testthat::expect_equal(
     output_oglm$code,
@@ -311,16 +316,15 @@ testthat::test_that("oglm master function consistent with sampleSelection output
     output_oglm$objectiveFn,
     llk_selection_wrapper
   )
-}
-)
+})
 
 
 testthat::test_that("Variance-covariance matrix is the same", {
   testthat::expect_equal(
     output_oglm$vcov,
     selection_model$vcovAll,
-    check.attributes = FALSE,
-    tolerance = 1e-2
+    check.attributes = FALSE#,
+#    tolerance = 1e-2
   )
 })
 
