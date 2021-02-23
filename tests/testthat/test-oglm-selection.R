@@ -26,6 +26,8 @@ dat$yOu[ !dat$yS ] <- NA
 dat$yO <- cut( dat$yOu, bound )
 table( dat$yO )
 
+requireNamespace("sampleSelection", quietly = TRUE)
+
 selection_model <- sampleSelection::selection( yS ~ x1 + x2, yO ~ x1, data = dat, boundaries = bound,
                                                ys = TRUE, xs = TRUE, yo = TRUE, xo = TRUE)
 
