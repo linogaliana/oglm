@@ -317,6 +317,18 @@ testthat::test_that("Variance-covariance matrix is the same", {
   testthat::expect_equal(
     output_oglm$vcov,
     selection_model$vcovAll,
-    check.attributes = FALSE
+    check.attributes = FALSE,
+    tolerance = 1e-2
   )
 })
+
+
+
+# microbenchmark::microbenchmark(
+#   oglm::oglmx(selection = "y ~ x1 + x2", yO ~ x1, data = dat,
+#               threshparam = c(-Inf, 5, 15, Inf),
+#               start = selection_model$start),
+#   sampleSelection::selection( yS ~ x1 + x2, yO ~ x1, data = dat, boundaries = bound,
+#                               start = selection_model$start),
+#   times = 10L
+# )

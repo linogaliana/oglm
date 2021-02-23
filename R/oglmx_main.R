@@ -268,7 +268,7 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
     y_selection <- model.response(mfS)
 
     mo <- match(c("formulaMEAN", "data", "subset"), names(mf),
-               0)
+                0)
     mfO <- mf[c(1, mo)]
     if (is.null(threshparam)) {
       mfO$drop.unused.levels <- TRUE
@@ -444,10 +444,10 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
   if (!is.null(selection)){
     names(results$estimate) <- c(colnames(Z), colnames(X), "log(sigma)", "atanhRho")
     results$coefAll <- c(results$estimate, sigma = unname(exp(results$estimate["log(sigma)"])),
-                        sigmaSq = unname(exp(2 * results$estimate["log(sigma)"])),
-                        rho = unname(tanh(results$estimate["atanhRho"])))
+                         sigmaSq = unname(exp(2 * results$estimate["log(sigma)"])),
+                         rho = unname(tanh(results$estimate["atanhRho"])))
     jac <- cbind(diag(length(results$estimate)), matrix(0, length(results$estimate),
-                                                       3))
+                                                        3))
     rownames(jac) <- names(results$estimate)
     colnames(jac) <- c(names(results$estimate), "sigma", "sigmaSq",
                        "rho")
@@ -456,7 +456,14 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
     jac["atanhRho", "rho"] <- 1 - (tanh(results$estimate["atanhRho"]))^2
     results$vcov <- t(jac) %*% vcov(results) %*% jac
     class(results) <- c("oglmx.selection",class(results))
-    return(results)
+
+    results$params <- list(
+      "selection" = 1:ncol(Z),
+      "outcome"   = seq(from = ncol(Z) + 1, to = ncol(Z) + ncol(X)),
+      "error" = seq(from = ncol(Z) + ncol(X) + 1,
+                    to = length(results$coefAll)
+      )
+    )
 
   } else{
     results$vcov <- vcov(results,tol=tol)
