@@ -270,6 +270,18 @@ output_oglm <- oglm::oglmx(selection = "y ~ x1 + x2", yO ~ x1, data = dat,
                            start = selection_model$start)
 
 
+testthat::test_that("Reported formulas correct",{
+  testthat::expect_equal(class(output_oglm$formula),
+                         "list")
+  testthat::expect_equal(output_oglm$formula$meaneq,
+                         as.formula("yO ~ x1"))
+  testthat::expect_equal(output_oglm$formula$selection,
+                         as.formula("y ~ x1 + x2"))
+  testthat::expect_equal(output_oglm$formula$sdeq,
+                         NULL)
+})
+
+
 testthat::test_that("oglm master function consistent with sampleSelection output", {
 
   testthat::expect_equal(

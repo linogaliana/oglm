@@ -211,14 +211,14 @@ predict.oglmx.selection <- function(object, newdata = NULL, type = c("class", "p
 
   newdata <- as.data.frame(newdata)
   formula_outcome <- object$formula$`meaneq`
-  formula_selection <- object$formula$`meaneq`
+  formula_selection <- object$formula$selection
 
 
   # CREATE TERMS TO REPLICATE MASS::predict.polr BEHAVIOR
   # --------------------------------------------------
 
   # Transform formula in terms
-  object$terms <- terms(as.formula(formula))
+  object$terms <- terms(as.formula(formula_outcome))
 
   # Keep only covariates
   Terms <- delete.response(object$terms)
