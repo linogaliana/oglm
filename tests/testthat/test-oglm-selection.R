@@ -324,6 +324,18 @@ testthat::test_that("Variance-covariance matrix is the same", {
 
 
 
+# compare with stata ---------------------
+
+
+# womensat <- haven::read_dta("https://www.stata-press.com/data/r16/womensat.dta")
+#
+# model_stata <- oglm::oglmx(selection = "work ~ education + age + factor(married) + factor(children)",
+#             "satisfaction ~ education + age", data = womensat,
+#             threshparam = c(-Inf, 1.728757, 2.64357,
+#                             3.642911, Inf))
+
+
+
 # microbenchmark::microbenchmark(
 #   oglm::oglmx(selection = "y ~ x1 + x2", yO ~ x1, data = dat,
 #               threshparam = c(-Inf, 5, 15, Inf),
