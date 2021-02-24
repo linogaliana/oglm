@@ -128,3 +128,11 @@ testthat::test_that("When providing bounds, thresholds are not estimated but std
   )
 })
 
+
+
+
+# MODELS WITH SELECTION ----------------------
+
+
+
+

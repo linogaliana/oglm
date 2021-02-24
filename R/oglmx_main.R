@@ -17,6 +17,9 @@
 #' @param formulaSD either `NULL` (homoskedastic model) or an object
 #'   of class \link[stats]{formula}: a symbolic description of
 #'   the model used to explain the variance of the latent variable.
+#' @param selection Formula for Heckman selection model. If `NULL` (default),
+#'   assuming no selection on observables
+#'   (introduced in [#11](https://github.com/linogaliana/oglm/pull/11))
 #' @param data a data frame containing the variables in the model.
 #' @param start either `NULL` or a numeric vector specifying
 #'   start values for each of the estimated parameters,
@@ -86,7 +89,11 @@
 #'   standard errors will be calculated using the sandwich estimator
 #'   by default when calling `summary`.
 #' @param optmeth specifies a method for the maximisation of the likelihood
-#'   passed to [maxLik::maxLik()]. Default to *NR* (Newton-Raphson)
+#'   passed to [maxLik::maxLik()]. Default to *NR* (Newton-Raphson) when
+#'   no selection is introduced. Forced to *BHHH* when selection on observables
+#'   is introduced.
+#' @param return_envir Logical indicating whether we want to stop early and
+#'   return objects used to fit the model
 #' @param tol Argument passed to [qr.solve], defines the tolerance
 #' for detecting linear dependencies in the hessian matrix to be inverted.
 #' @inheritParams stats::glm
@@ -207,14 +214,17 @@
 #' @import maxLik
 #' @import stats
 #' @export
-oglmx<-function(formulaMEAN, formulaSD=NULL, data, start=NULL, weights=NULL, link="probit",
+oglmx<-function(formulaMEAN, formulaSD=NULL,
+                selection = NULL,
+                data, start=NULL, weights=NULL, link="probit",
                 constantMEAN=TRUE, constantSD=TRUE, beta=NULL, delta=NULL, threshparam=NULL,
                 analhessian=TRUE, sdmodel=expression(exp(z)), SameModelMEANSD=FALSE, na.action,
                 savemodelframe=TRUE, Force=FALSE, robust=FALSE,
                 optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM"),
                 tol=1e-20,
                 start_method = c("default","search"),
-                search_iter = 10){
+                search_iter = 10,
+                return_envir = FALSE){
 
   optmeth <- match.arg(optmeth)
   start_method <- match.arg(start_method)
@@ -230,38 +240,95 @@ oglmx<-function(formulaMEAN, formulaSD=NULL, data, start=NULL, weights=NULL, lin
   oglmxoutput$link<-link
   oglmxoutput$sdmodel<-sdmodel
   oglmxoutput$call<-cl
- # if (!constantMEAN){formulaMEAN<-update(formulaMEAN,~0+.)}
+  # if (!constantMEAN){formulaMEAN<-update(formulaMEAN,~0+.)}
 
   if (!is.null(formulaMEAN)) formulaMEAN <- as.formula(formulaMEAN)
   if (!is.null(formulaSD)) formulaSD <- as.formula(formulaSD)
+  if (!is.null(selection)) selection <- as.formula(selection)
+
+  if ((!is.null(selection)) && (!is.null(formulaSD))){
+    message("Heteroskedastic model not implemented with censored model. Forcing homoskedastic model")
+    formulaSD <- NULL
+  }
+
 
   if (!is.null(formulaSD)){
-  #  if (!constantSD){formulaSD<-update(formulaSD,~0+.)}
+    #  if (!constantSD){formulaSD<-update(formulaSD,~0+.)}
     cl$formulaMEAN<-mergeformulas(formulaMEAN,formulaSD)
   } else if (SameModelMEANSD){
     formulaSD<-formulaMEAN
   }
 
 
-  names(cl)[match("formulaMEAN",names(cl))]<-"formula"
-  #return(cl)
-  m<-match(c("formula","data","subset","weights","na.action","offset"),names(cl),0L)
-  mf<-cl[c(1L,m)]
-  mf$drop.unused.levels <- TRUE
-  mf[[1L]] <- quote(stats::model.frame)
-  mf<-eval(mf,parent.frame())
+  if (!is.null(selection)){
+    mf <- match.call(expand.dots = FALSE)
+    m <- match(c("selection", "data", "subset"), names(mf),
+               0)
+    mfS <- mf[c(1, m)]
+    mfS$drop.unused.levels <- TRUE
+    mfS$na.action <- na.pass
+    mfS[[1]] <- as.name("model.frame")
+    names(mfS)[2] <- "formula"
+    mfS <- eval(mfS, parent.frame())
+    mtS <- terms(mfS)
+    Z <- model.matrix(mtS, mfS)
+    y_selection <- model.response(mfS)
 
-  factorvars<-names(attr(attr(mf,"terms"),"dataClasses"))[attr(attr(mf,"terms"),"dataClasses")=="factor"]
-  attr(factorvars,"levels")<-lapply(factorvars,function(x){levels(mf[[x]])})
-  oglmxoutput$factorvars<-factorvars
+    mo <- match(c("formulaMEAN", "data", "subset"), names(mf),
+                0)
+    mfO <- mf[c(1, mo)]
+    if (is.null(threshparam)) {
+      mfO$drop.unused.levels <- TRUE
+    }
+    mfO$na.action <- na.pass
+    mfO[[1]] <- as.name("model.frame")
+    names(mfO)[2] <- "formula"
+    mfO <- eval(mfO, parent.frame())
+    mtO <- attr(mfO, "terms")
+    X <- model.matrix(mtO, mfO)
+    Y <- as.factor(model.response(mfO))
 
-  mt<- attr(mf,"terms")
-  Y<-as.factor(model.response(mf,"numeric"))
+
+    # names(cls)[match("selection",names(cls))]<-"formula"
+    # ms<-match(c("selection","data","subset","weights","na.action","offset"),names(cl),0L)
+    # mfs<-cls[c(1L,ms)]
+    # mfs[["formula"]] <- as.formula(mfs[["formula"]])
+    # mfs$drop.unused.levels <- TRUE
+    # mfs[[1L]] <- quote(stats::model.frame)
+    # # terrible temporary hack
+    # selection_model <- model.frame(mfs, data = dat)
+    # y_selection <- selection_model[, as.character(mfs[["formula"]][[2]])]
+    # Z <- selection_model[, !(colnames(selection_model) %in% as.character(mfs[["formula"]][[2]]))]
+    # if (!grepl("0 +", as.character("selection"))) Z <- as.matrix(
+    #   cbind.data.frame("(Intercept)" = 1L, Z)
+    # )
+
+    mf <- mfO
+
+  } else{
+    names(cl)[match("formulaMEAN",names(cl))]<-"formula"
+    m<-match(c("formula","data","subset","weights","na.action","offset"),names(cl),0L)
+    mf<-cl[c(1L,m)]
+    mf$drop.unused.levels <- TRUE
+    mf[[1L]] <- quote(stats::model.frame)
+    mf<-eval(mf,parent.frame())
+
+    factorvars<-names(attr(attr(mf,"terms"),"dataClasses"))[attr(attr(mf,"terms"),"dataClasses")=="factor"]
+    attr(factorvars,"levels")<-lapply(factorvars,function(x){levels(mf[[x]])})
+    oglmxoutput$factorvars<-factorvars
+
+    mt<- attr(mf,"terms")
+    Y<-as.factor(model.response(mf,"numeric"))
+    X<-model.matrix(formulaMEAN,mf)
+
+
+  }
+  factorvarsX<-names(attr(X,"contrasts"))
+
   outcomenames<-levels(Y)
   oglmxoutput$Outcomes<-outcomenames
 
-  X<-model.matrix(formulaMEAN,mf)
-  factorvarsX<-names(attr(X,"contrasts"))
+
 
   if (!constantMEAN){
     Xint<-match("(Intercept)",colnames(X),nomatch = 0L)
@@ -292,12 +359,19 @@ oglmx<-function(formulaMEAN, formulaSD=NULL, data, start=NULL, weights=NULL, lin
       Zint<-match("(Intercept)",colnames(Z),nomatch = 0L)
       if (Zint>0L){Z<-Z[,-Zint,drop=FALSE]}
     }
-  } else {
+    oglmxoutput$selection<-FALSE
+  } else if (is.null(selection)) {
     Z<-matrix(rep(1,nrow(X)),ncol=1)
     oglmxoutput$Hetero<-FALSE
+    oglmxoutput$selection<-FALSE
+  } else{
+    # Z <- model.matrix(as.formula(selection),mf)
+    # Z constructed later on
+    oglmxoutput$Hetero<-FALSE
+    oglmxoutput$selection<-TRUE
   }
 
-  oglmxoutput$formula<-list(meaneq=formulaMEAN,sdeq=formulaSD)
+  oglmxoutput$formula<-list(meaneq=formulaMEAN,sdeq=formulaSD,selection=selection)
 
   # beta
   if (!is.null(beta) & length(beta)==1){
@@ -322,7 +396,7 @@ oglmx<-function(formulaMEAN, formulaSD=NULL, data, start=NULL, weights=NULL, lin
     threshparam<-c(threshparam,rep(NA,No.Outcomes-2))
   } else if (!is.null(threshparam) & length(threshparam)>1){
     # check that the specified vector is of correct length
-    if (length(threshparam)!=No.Outcomes-1){stop("Specified vector of threshold parameters of incorrect length.")}
+    if (is.null(selection) && length(threshparam)!=No.Outcomes-1){stop("Specified vector of threshold parameters of incorrect length.")}
   } else if (is.null(threshparam)){
     threshparam<-rep(NA,No.Outcomes-1)
   }
@@ -352,22 +426,62 @@ oglmx<-function(formulaMEAN, formulaSD=NULL, data, start=NULL, weights=NULL, lin
 
 
 
+  if (is.null(selection)){
+    FitInput<-append(list(outcomeMatrix=outcomeMatrix,X=X,Z=Z,w=weights,beta=beta,delta=delta,threshparam=threshparam,
+                          start=start,optmeth=optmeth, start_method = start_method, search_iter = search_iter),fitinput)
+  } else{
+    FitInput<- list(y=Y,y_selection = y_selection, X=X,Z=Z,thresholds=threshparam,
+                    start=start,optmeth=optmeth, start_method = start_method, search_iter = search_iter)
+  }
+  if (return_envir) return(FitInput)
 
-  FitInput<-append(list(outcomeMatrix=outcomeMatrix,X=X,Z=Z,w=weights,beta=beta,delta=delta,threshparam=threshparam,
-                 start=start,optmeth=optmeth, start_method = start_method, search_iter = search_iter),fitinput)
-  #return(FitInput)
-  results<-append(oglmxoutput,do.call("oglmx.fit",FitInput))
+  if (is.null(selection)){
+    results<-append(oglmxoutput,do.call("oglmx.fit",FitInput))
+  } else{
+    results<-append(oglmxoutput,do.call("oglmx.fit2", FitInput))
+    results$loglikelihood <- results$maximum
+  }
 
+  attr(results$loglikelihood,"No.Obs") <- length(Y)
 
-  attr(results$loglikelihood,"No.Obs")<-length(Y)
 
   class(results)<-"oglmx"
 
-  results$vcov <- vcov(results,tol=tol)
+
+  if (!is.null(selection)){
+    names(results$estimate) <- c(colnames(Z), colnames(X), "log(sigma)", "atanhRho")
+    results$coefAll <- c(results$estimate, sigma = unname(exp(results$estimate["log(sigma)"])),
+                         sigmaSq = unname(exp(2 * results$estimate["log(sigma)"])),
+                         rho = unname(tanh(results$estimate["atanhRho"])))
+    jac <- cbind(diag(length(results$estimate)), matrix(0, length(results$estimate),
+                                                        3))
+    rownames(jac) <- names(results$estimate)
+    colnames(jac) <- c(names(results$estimate), "sigma", "sigmaSq",
+                       "rho")
+    jac["log(sigma)", "sigma"] <- exp(results$estimate["log(sigma)"])
+    jac["log(sigma)", "sigmaSq"] <- 2 * exp(2 * results$estimate["log(sigma)"])
+    jac["atanhRho", "rho"] <- 1 - (tanh(results$estimate["atanhRho"]))^2
+    results$vcov <- t(jac) %*% vcov(results) %*% jac
+    class(results) <- c("oglmx.selection",class(results))
+
+    results$params <- list(
+      "selection" = 1:ncol(Z),
+      "outcome"   = seq(from = ncol(Z) + 1, to = ncol(Z) + ncol(X)),
+      "error" = seq(from = ncol(Z) + ncol(X) + 1,
+                    to = length(results$coefAll)
+      )
+    )
+
+  } else{
+    results$vcov <- vcov(results,tol=tol)
+  }
+
 
   return(results)
 
   #return(list(Y,X,Z,outcomeMatrix,weights))
 }
+
+
 
 

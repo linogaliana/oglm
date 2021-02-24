@@ -11,12 +11,19 @@ LazyData: true
 RoxygenNote: 7.1.1
 Roxygen: list(markdown = TRUE)
 Depends: maxLik
-Imports: stats
+Imports: 
+    stats,
+    mvtnorm,
+    Rcpp
 Suggests:
     glmx,
     lmtest,
     testthat,
     covr,
     MASS,
-    oglmx
+    oglmx,
+    sampleSelection
 NeedsCompilation: no
+LinkingTo: 
+    Rcpp,
+    RcppArmadillo

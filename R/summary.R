@@ -47,3 +47,50 @@ print.summary.oglmx <- function(x, ... ){
     printCoefmat(x$estimateDisplay[[3]])
   }
 }
+
+#' @export
+
+summary.oglmx.selection <- function(object, ... ){
+  stdEr.oglmx<-diag(object$vcov)^0.5
+  t<-object$coefAll/stdEr.oglmx
+  p <- 2*pnorm( -abs( t))
+  results <- cbind("Estimate"=object$coefAll,
+                   "Std. error"=stdEr.oglmx,
+                   "t value"=t, "Pr(>|t|)"=p)
+  results_selection <- results[object$params$selection,]
+  results_outcome <- results[object$params$outcome,]
+  results_error <- results[object$params$error,]
+
+  summary<-list(regtype=.regtype.oglmx(object),
+                loglikelihood=object$loglikelihood,
+                estimate=list("selection" = results_selection,
+                              "outcome" = results_outcome,
+                              "errors" = results_error),
+                no.iterations=object$iterations,
+                # McFaddensR2=McFaddensR2.oglmx(object),
+                AIC=AIC(object),
+                coefficients=object$estimate)
+  class(summary) <- c("summary.oglmx.selection",
+                      "summary.oglmx")
+  summary
+}
+
+
+#' @export
+print.summary.oglmx.selection <- function(x, ... ){
+  cat(x$regtype,"\n")
+  cat("Log-Likelihood:", x$loglikelihood, "\n")
+  cat("Number of observations:", attr(x$loglikelihood, "No.Obs"))
+  cat("No. Iterations:", x$no.iterations, "\n")
+  cat("AIC:",x$AIC,"\n")
+
+  cat("-----","Selection Model","------\n")
+  printCoefmat(x$estimate$selection,signif.legend=FALSE, has.Pvalue = TRUE)
+  cat("\n")
+  cat("-----","Outcome Model","------\n")
+  printCoefmat(x$estimate$outcome,signif.legend=FALSE, has.Pvalue = TRUE)
+  cat("-----","Error terms parameters","------\n")
+  printCoefmat(x$estimate$errors[c("log(sigma)","sigma","rho"),],signif.legend=TRUE, has.Pvalue = TRUE)
+  cat("--------------------------------------------\n")
+  invisible(x)
+}
