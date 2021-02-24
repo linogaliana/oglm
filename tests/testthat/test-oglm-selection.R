@@ -362,3 +362,14 @@ testthat::test_that("Variance-covariance matrix is the same", {
 #                               start = selection_model$start),
 #   times = 10L
 # )
+
+
+
+# profvis::profvis({
+#   x1 = oglm::oglmx(selection = "y ~ x1 + x2", yO ~ x1, data = dat,
+#                              threshparam = c(-Inf, 5, 15, Inf),
+#                              start = selection_model$start)})
+# profvis::profvis({
+#   x2 = sampleSelection::selection( yS ~ x1 + x2, yO ~ x1, data = dat, boundaries = bound,
+#                               ys = TRUE, xs = TRUE, yo = TRUE, xo = TRUE)
+# })

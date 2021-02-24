@@ -122,6 +122,17 @@ grad_llk_selection <- function(y, y_selection,
                                                                    rho = rho, sigma = sigma,
                                                                    rho_matrix = rho_matrix)
 
+  diff_pmvnorm <- pmax(
+    do.call(rbind,
+            lapply(which(!idx_0),
+                   dff_pnorm,
+                   thresholds = thresholds,
+                   outcome_index = outcome_index,
+                   xhat = xhat, zhat = zhat, sigma = sigma,
+                   rho_matrix = rho_matrix)
+    ), .Machine$double.eps)
+
+  grad[!idx_0,] <- grad[!idx_0,]/as.numeric(diff_pmvnorm)
 
   return(grad)
 }
@@ -216,7 +227,7 @@ dllkdgamma <- function(outcome_index, idx_0,
                        rho_matrix,
                        Z){
 
-
+  # will need to do: dllkdgamma/diff_pmvnorm to get the real gradient
   grad_llk <- matrix(0, nrow(Z), ncol(Z))
 
   # Gradient for observations where y == 0
@@ -230,17 +241,17 @@ dllkdgamma <- function(outcome_index, idx_0,
                         rho)
   p2 <- p2*dnorm(zhat)*Z
 
-  diff_pmvnorm <- pmax(
-    do.call(rbind,
-            lapply(which(!idx_0),
-                   dff_pnorm,
-                   thresholds = thresholds,
-                   outcome_index = outcome_index,
-                   xhat = xhat, zhat = zhat, sigma = sigma,
-                   rho_matrix = rho_matrix)
-    ), .Machine$double.eps)
+  # diff_pmvnorm <- pmax(
+  #   do.call(rbind,
+  #           lapply(which(!idx_0),
+  #                  dff_pnorm,
+  #                  thresholds = thresholds,
+  #                  outcome_index = outcome_index,
+  #                  xhat = xhat, zhat = zhat, sigma = sigma,
+  #                  rho_matrix = rho_matrix)
+  #   ), .Machine$double.eps)
 
-  grad_llk[!idx_0,] <- p2[!idx_0,]/as.numeric(diff_pmvnorm)
+  grad_llk[!idx_0,] <- p2[!idx_0,]#/as.numeric(diff_pmvnorm)
 
 
   return(grad_llk)
@@ -269,17 +280,17 @@ dllkdbeta <- function(outcome_index, idx_0,
   p2 <- p2_pnorm1*p2_dnorm1 -  p2_pnorm2*p2_dnorm2
   p2 <- -p2*X/sigma
 
-  diff_pmvnorm <- pmax(
-    do.call(rbind,
-            lapply(which(!idx_0),
-                   dff_pnorm,
-                   thresholds = thresholds,
-                   outcome_index = outcome_index,
-                   xhat = xhat, zhat = zhat, sigma = sigma,
-                   rho_matrix = rho_matrix)
-    ), .Machine$double.eps)
+  # diff_pmvnorm <- pmax(
+  #   do.call(rbind,
+  #           lapply(which(!idx_0),
+  #                  dff_pnorm,
+  #                  thresholds = thresholds,
+  #                  outcome_index = outcome_index,
+  #                  xhat = xhat, zhat = zhat, sigma = sigma,
+  #                  rho_matrix = rho_matrix)
+  #   ), .Machine$double.eps)
 
-  grad_llk[!idx_0,] <- p2[!idx_0,]/as.numeric(diff_pmvnorm)
+  grad_llk[!idx_0,] <- p2[!idx_0,]#/as.numeric(diff_pmvnorm)
 
 
   return(grad_llk)
@@ -293,15 +304,16 @@ dllkdrho <- function(outcome_index, idx_0,
   # Gradient for observations where y == 0
   # stays 0 !
 
-  diff_pmvnorm <- pmax(
-    do.call(rbind,
-            lapply(which(!idx_0),
-                   dff_pnorm,
-                   thresholds = thresholds,
-                   outcome_index = outcome_index,
-                   xhat = xhat, zhat = zhat, sigma = sigma,
-                   rho_matrix = rho_matrix)
-    ), .Machine$double.eps)
+  # diff_pmvnorm <- pmax(
+  #   do.call(rbind,
+  #           lapply(which(!idx_0),
+  #                  dff_pnorm,
+  #                  thresholds = thresholds,
+  #                  outcome_index = outcome_index,
+  #                  xhat = xhat, zhat = zhat, sigma = sigma,
+  #                  rho_matrix = rho_matrix)
+  #   ), .Machine$double.eps)
+
   diff_dmvnorm <- -do.call(rbind,
                            lapply(which(!idx_0),
                                   dff_dnorm,
@@ -313,7 +325,7 @@ dllkdrho <- function(outcome_index, idx_0,
 
 
   # because we estimate arctanh(rho)
-  grad_llk <- as.numeric(diff_dmvnorm)/as.numeric(diff_pmvnorm)
+  grad_llk <- as.numeric(diff_dmvnorm)#/as.numeric(diff_pmvnorm)
 
 
   return(grad_llk)
@@ -334,22 +346,22 @@ dllkdsigma <- function(outcome_index, idx_0,
   }
 
 
-  diff_pmvnorm <- pmax(
-    do.call(rbind,
-            lapply(which(!idx_0),
-                   dff_pnorm,
-                   thresholds = thresholds,
-                   outcome_index = outcome_index,
-                   xhat = xhat, zhat = zhat, sigma = sigma,
-                   rho_matrix = rho_matrix)
-    ), .Machine$double.eps)
+  # diff_pmvnorm <- pmax(
+  #   do.call(rbind,
+  #           lapply(which(!idx_0),
+  #                  dff_pnorm,
+  #                  thresholds = thresholds,
+  #                  outcome_index = outcome_index,
+  #                  xhat = xhat, zhat = zhat, sigma = sigma,
+  #                  rho_matrix = rho_matrix)
+  #   ), .Machine$double.eps)
 
 
   diff_dpnorm <- lapply(which(!idx_0),
                         diff_numerator)
 
 
-  grad_llk <- as.numeric(diff_dpnorm)/as.numeric(diff_pmvnorm)
+  grad_llk <- as.numeric(diff_dpnorm)#/as.numeric(diff_pmvnorm)
 
   # we need gradient with respect to log(sigma)
   grad_llk <- grad_llk*sigma
