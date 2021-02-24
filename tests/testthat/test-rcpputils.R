@@ -45,21 +45,23 @@ zhat <- drop(fitInput$Z%*%c(1,2,-4))
 rho_matrix <- matrix(c(1, -rho, -rho, 1), nrow = 2)
 sigma = 2
 
-x = oglm:::dff_dnorm(thresholds, outcome_index,
-          xhat, zhat, sigma,
-          rho_matrix)
-x2 = oglm:::dff_dnorm_cpp(thresholds, outcome_index,
-          xhat, zhat, sigma,
-          rho_matrix)
-
-microbenchmark::microbenchmark(
+testthat::expect_equal(
   oglm:::dff_dnorm(thresholds, outcome_index,
-            xhat, zhat, sigma,
-            rho_matrix),
+          xhat, zhat, sigma,
+          rho_matrix),
   oglm:::dff_dnorm_cpp(thresholds, outcome_index,
-                xhat, zhat, sigma,
-                rho_matrix),
-  oglm:::dff_dnorm_cpp(thresholds, outcome_index,
-                xhat, zhat, sigma,
-                rho_matrix, ncores = 4)
+          xhat, zhat, sigma,
+          rho_matrix),
+  check.attributes = FALSE
 )
+# microbenchmark::microbenchmark(
+#   oglm:::dff_dnorm(thresholds, outcome_index,
+#             xhat, zhat, sigma,
+#             rho_matrix),
+#   oglm:::dff_dnorm_cpp(thresholds, outcome_index,
+#                 xhat, zhat, sigma,
+#                 rho_matrix),
+#   oglm:::dff_dnorm_cpp(thresholds, outcome_index,
+#                 xhat, zhat, sigma,
+#                 rho_matrix, ncores = 4)
+# )
