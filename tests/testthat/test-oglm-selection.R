@@ -270,6 +270,13 @@ output_oglm <- oglm::oglmx(selection = "y ~ x1 + x2", yO ~ x1, data = dat,
                            start = selection_model$start)
 
 
+testthat::expect_s3_class(
+  output_oglm, "oglmx.selection"
+)
+testthat::expect_s3_class(
+  output_oglm, "oglmx"
+)
+
 testthat::test_that("Reported formulas correct",{
   testthat::expect_equal(class(output_oglm$formula),
                          "list")
