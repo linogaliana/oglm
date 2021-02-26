@@ -25,6 +25,7 @@ oglmx(
   Force = FALSE,
   robust = FALSE,
   optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM"),
+  gradient = c("analytical", "numerical"),
   tol = 1e-20,
   start_method = c("default", "search"),
   search_iter = 10,

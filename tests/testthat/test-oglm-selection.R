@@ -348,6 +348,16 @@ testthat::test_that("Variance-covariance matrix is the same", {
 })
 
 
+# OPTIONS ---------
+
+testthat::expect_error(
+  oglm::oglmx(selection = "y ~ x1 + x2", yO ~ x1, data = dat,
+              threshparam = c(-Inf, 5, 15, Inf),
+              start = selection_model$start,
+              gradient = "nonauthorized")
+)
+
+
 
 # compare with stata ---------------------
 

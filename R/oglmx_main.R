@@ -221,6 +221,7 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
                 analhessian=TRUE, sdmodel=expression(exp(z)), SameModelMEANSD=FALSE, na.action,
                 savemodelframe=TRUE, Force=FALSE, robust=FALSE,
                 optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM"),
+                gradient = c("analytical","numerical"),
                 tol=1e-20,
                 start_method = c("default","search"),
                 search_iter = 10,
@@ -228,6 +229,7 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
 
   optmeth <- match.arg(optmeth)
   start_method <- match.arg(start_method)
+  gradient <- match.arg(gradient)
 
 
   cl<-match.call()
@@ -431,7 +433,8 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
                           start=start,optmeth=optmeth, start_method = start_method, search_iter = search_iter),fitinput)
   } else{
     FitInput<- list(y=Y,y_selection = y_selection, X=X,Z=Z,thresholds=threshparam,
-                    start=start,optmeth=optmeth, start_method = start_method, search_iter = search_iter)
+                    start=start,optmeth=optmeth, start_method = start_method, search_iter = search_iter,
+                    gradient = gradient)
   }
   if (return_envir) return(FitInput)
 
