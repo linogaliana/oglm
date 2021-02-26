@@ -449,8 +449,6 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
 
 
   class(results)<-"oglmx"
-  if (!is.null(selection)) class(results) <- c("oglmx.selection",class(results))
-
 
 
   if (!is.null(selection)){
@@ -468,6 +466,7 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
     jac["atanhRho", "rho"] <- 1 - (tanh(results$estimate["atanhRho"]))^2
     results$vcov <- t(jac) %*% vcov(results) %*% jac
 
+
     results$params <- list(
       "selection" = 1:ncol(Z),
       "outcome"   = seq(from = ncol(Z) + 1, to = ncol(Z) + ncol(X)),
@@ -475,6 +474,7 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
                     to = length(results$coefAll)
       )
     )
+    class(results) <- c("oglmx.selection",class(results))
 
   } else{
     results$vcov <- vcov(results,tol=tol)
