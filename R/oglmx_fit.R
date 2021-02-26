@@ -121,7 +121,16 @@ oglmx.fit2 <-function(y,y_selection,X,Z,thresholds,start,
                       optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM"),
                       censored_model = FALSE,
                       start_method = c("default","search"),
-                      search_iter = 10){
+                      search_iter = 10,
+                      gradient = c("analytical","numerical")
+                      ){
+
+  gradient <- match.arg(gradient)
+
+  grad_func <- switch(gradient,
+    analytical = grad_llk_selection_wrapper,
+    numerical = NULL
+  )
 
 
   if ((start_method != "default") && is.null(start)){
@@ -157,7 +166,7 @@ oglmx.fit2 <-function(y,y_selection,X,Z,thresholds,start,
 
   result <- maxLik::maxLik(
     llk_selection_wrapper,
-    grad = grad_llk_selection_wrapper,
+    grad = grad_func,
     hess = NULL,
     method = "BHHH",
     start = start_algo,

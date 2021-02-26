@@ -25,6 +25,7 @@ oglmx(
   Force = FALSE,
   robust = FALSE,
   optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM"),
+  gradient = c("analytical", "numerical"),
   tol = 1e-20,
   start_method = c("default", "search"),
   search_iter = 10,
@@ -143,6 +144,11 @@ by default when calling \code{summary}.}
 passed to \code{\link[maxLik:maxLik]{maxLik::maxLik()}}. Default to \emph{NR} (Newton-Raphson) when
 no selection is introduced. Forced to \emph{BHHH} when selection on observables
 is introduced.}
+
+\item{gradient}{Should we use analytical gradient (default)
+or numerical gradient ?
+Analytical gradient results in slower iterations but sometimes help
+the model to converge faster.}
 
 \item{tol}{Argument passed to \link{qr.solve}, defines the tolerance
 for detecting linear dependencies in the hessian matrix to be inverted.}

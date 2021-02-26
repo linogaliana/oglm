@@ -92,6 +92,10 @@
 #'   passed to [maxLik::maxLik()]. Default to *NR* (Newton-Raphson) when
 #'   no selection is introduced. Forced to *BHHH* when selection on observables
 #'   is introduced.
+#' @param gradient Should we use analytical gradient (default)
+#'   or numerical gradient ?
+#'   Analytical gradient results in slower iterations but sometimes help
+#'   the model to converge faster.
 #' @param return_envir Logical indicating whether we want to stop early and
 #'   return objects used to fit the model
 #' @param tol Argument passed to [qr.solve], defines the tolerance
@@ -221,6 +225,7 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
                 analhessian=TRUE, sdmodel=expression(exp(z)), SameModelMEANSD=FALSE, na.action,
                 savemodelframe=TRUE, Force=FALSE, robust=FALSE,
                 optmeth = c("NR", "BFGS", "BFGSR", "BHHH", "SANN", "CG", "NM"),
+                gradient = c("analytical","numerical"),
                 tol=1e-20,
                 start_method = c("default","search"),
                 search_iter = 10,
@@ -228,6 +233,7 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
 
   optmeth <- match.arg(optmeth)
   start_method <- match.arg(start_method)
+  gradient <- match.arg(gradient)
 
 
   cl<-match.call()
@@ -431,7 +437,8 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
                           start=start,optmeth=optmeth, start_method = start_method, search_iter = search_iter),fitinput)
   } else{
     FitInput<- list(y=Y,y_selection = y_selection, X=X,Z=Z,thresholds=threshparam,
-                    start=start,optmeth=optmeth, start_method = start_method, search_iter = search_iter)
+                    start=start,optmeth=optmeth, start_method = start_method, search_iter = search_iter,
+                    gradient = gradient)
   }
   if (return_envir) return(FitInput)
 
@@ -446,8 +453,6 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
 
 
   class(results)<-"oglmx"
-  if (!is.null(selection)) class(results) <- c("oglmx.selection",class(results))
-
 
 
   if (!is.null(selection)){
@@ -465,6 +470,7 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
     jac["atanhRho", "rho"] <- 1 - (tanh(results$estimate["atanhRho"]))^2
     results$vcov <- t(jac) %*% vcov(results) %*% jac
 
+
     results$params <- list(
       "selection" = 1:ncol(Z),
       "outcome"   = seq(from = ncol(Z) + 1, to = ncol(Z) + ncol(X)),
@@ -472,6 +478,7 @@ oglmx<-function(formulaMEAN, formulaSD=NULL,
                     to = length(results$coefAll)
       )
     )
+    class(results) <- c("oglmx.selection",class(results))
 
   } else{
     results$vcov <- vcov(results,tol=tol)

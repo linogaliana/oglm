@@ -348,6 +348,47 @@ testthat::test_that("Variance-covariance matrix is the same", {
 })
 
 
+# OPTIONS ---------
+
+testthat::expect_error(
+  oglm::oglmx(selection = "y ~ x1 + x2", yO ~ x1, data = dat,
+              threshparam = c(-Inf, 5, 15, Inf),
+              start = selection_model$start,
+              gradient = "nonauthorized")
+)
+
+testthat::test_that("Default to analytical",{
+
+  out1 <- oglm::oglmx(selection = "y ~ x1 + x2", yO ~ x1, data = dat,
+                      threshparam = c(-Inf, 5, 15, Inf),
+                      start = selection_model$start,
+                      gradient = "analytical")
+  out2 <- oglm::oglmx(selection = "y ~ x1 + x2", yO ~ x1, data = dat,
+                      threshparam = c(-Inf, 5, 15, Inf),
+                      start = selection_model$start)
+  testthat::expect_equal(
+    out1$estimate,
+    out2$estimate
+  )
+})
+
+testthat::test_that("Results when using numerical gradient", {
+  out2 <- oglm::oglmx(selection = "y ~ x1 + x2", yO ~ x1, data = dat,
+                      threshparam = c(-Inf, 5, 15, Inf),
+                      start = selection_model$start)
+
+  out3 <- oglm::oglmx(selection = "y ~ x1 + x2", yO ~ x1, data = dat,
+                      threshparam = c(-Inf, 5, 15, Inf),
+                      start = selection_model$start,
+                      gradient = "numerical")
+
+  testthat::expect_equal(
+    out2$estimate,
+    out3$estimate
+  )
+
+})
+
 
 # compare with stata ---------------------
 
