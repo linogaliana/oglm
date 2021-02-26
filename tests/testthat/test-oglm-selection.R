@@ -373,6 +373,10 @@ testthat::test_that("Default to analytical",{
 })
 
 testthat::test_that("Results when using numerical gradient", {
+  out2 <- oglm::oglmx(selection = "y ~ x1 + x2", yO ~ x1, data = dat,
+                      threshparam = c(-Inf, 5, 15, Inf),
+                      start = selection_model$start)
+
   out3 <- oglm::oglmx(selection = "y ~ x1 + x2", yO ~ x1, data = dat,
                       threshparam = c(-Inf, 5, 15, Inf),
                       start = selection_model$start,
