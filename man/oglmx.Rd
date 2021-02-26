@@ -145,6 +145,11 @@ passed to \code{\link[maxLik:maxLik]{maxLik::maxLik()}}. Default to \emph{NR} (N
 no selection is introduced. Forced to \emph{BHHH} when selection on observables
 is introduced.}
 
+\item{gradient}{Should we use analytical gradient (default)
+or numerical gradient ?
+Analytical gradient results in slower iterations but sometimes help
+the model to converge faster.}
+
 \item{tol}{Argument passed to \link{qr.solve}, defines the tolerance
 for detecting linear dependencies in the hessian matrix to be inverted.}
 
