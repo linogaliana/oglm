@@ -92,6 +92,10 @@
 #'   passed to [maxLik::maxLik()]. Default to *NR* (Newton-Raphson) when
 #'   no selection is introduced. Forced to *BHHH* when selection on observables
 #'   is introduced.
+#' @param gradient Should we use analytical gradient (default)
+#'   or numerical gradient ?
+#'   Analytical gradient results in slower iterations but sometimes help
+#'   the model to converge faster.
 #' @param return_envir Logical indicating whether we want to stop early and
 #'   return objects used to fit the model
 #' @param tol Argument passed to [qr.solve], defines the tolerance
